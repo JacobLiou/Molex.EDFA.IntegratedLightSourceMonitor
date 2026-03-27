@@ -39,7 +39,7 @@
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#1B1B2F"/>
                     <Setter Property="Foreground" Value="#9898B0"/>
-                    <Setter Property="Padding" Value="8,6"/>
+                    <Setter Property="Padding" Value="10,8"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
                     <Setter Property="BorderBrush" Value="#334466"/>
                     <Setter Property="BorderThickness" Value="0,0,0,1"/>

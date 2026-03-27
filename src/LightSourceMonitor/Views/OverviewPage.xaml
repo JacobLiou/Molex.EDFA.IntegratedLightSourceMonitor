@@ -10,7 +10,7 @@
                 <!-- Total Channels -->
                 <Border Background="#23233D" CornerRadius="8" Margin="0,0,8,0" Padding="16">
                     <StackPanel>
-                        <TextBlock Text="激光器总数" Foreground="#9898B0" FontSize="12"/>
+                        <TextBlock Text="激光器总数" Foreground="#9898B0"/>
                         <TextBlock Text="{Binding TotalChannels}" Style="{StaticResource KpiValueText}" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
@@ -19,10 +19,10 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="#00E676" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="正常通道" Foreground="#9898B0" FontSize="12"/>
+                            <TextBlock Text="正常通道" Foreground="#9898B0"/>
                         </StackPanel>
                         <TextBlock Text="{Binding NormalCount}" Foreground="#00E676"
-                                   FontFamily="Consolas" FontSize="32" FontWeight="Bold" Margin="0,8,0,0"/>
+                                   FontFamily="Consolas" FontSize="40" FontWeight="Bold" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
                 <!-- Warning -->
@@ -30,10 +30,10 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="#FF1744" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="告警通道" Foreground="#9898B0" FontSize="12"/>
+                            <TextBlock Text="告警通道" Foreground="#9898B0"/>
                         </StackPanel>
                         <TextBlock Text="{Binding WarningCount}" Foreground="#FF1744"
-                                   FontFamily="Consolas" FontSize="32" FontWeight="Bold" Margin="0,8,0,0"/>
+                                   FontFamily="Consolas" FontSize="40" FontWeight="Bold" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
                 <!-- Offline -->
@@ -41,10 +41,10 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="#616161" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="离线通道" Foreground="#9898B0" FontSize="12"/>
+                            <TextBlock Text="离线通道" Foreground="#9898B0"/>
                         </StackPanel>
                         <TextBlock Text="{Binding OfflineCount}" Foreground="#616161"
-                                   FontFamily="Consolas" FontSize="32" FontWeight="Bold" Margin="0,8,0,0"/>
+                                   FontFamily="Consolas" FontSize="40" FontWeight="Bold" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
@@ -69,7 +69,7 @@
                                             </Style>
                                         </Ellipse.Style>
                                     </Ellipse>
-                                    <TextBlock Text="{Binding DeviceName}" FontSize="14" FontWeight="SemiBold" 
+                                    <TextBlock Text="{Binding DeviceName}" FontSize="17" FontWeight="SemiBold" 
                                                Foreground="#E8E8F0" VerticalAlignment="Center"/>
                                     <TextBlock Text=" (SN: " Foreground="#9898B0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding DeviceSn}" Foreground="#9898B0" FontFamily="Consolas"
@@ -86,7 +86,7 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:ChannelCardViewModel}">
-                                            <Border Width="120" Margin="0,0,8,8" Padding="10"
+                                            <Border Width="160" Margin="0,0,8,8" Padding="12"
                                                     CornerRadius="6" Cursor="Hand"
                                                     BorderThickness="1">
                                                 <Border.Style>
@@ -129,13 +129,13 @@
                                                             </Ellipse.Style>
                                                         </Ellipse>
                                                         <TextBlock Text="{Binding ChannelName}" Foreground="#9898B0"
-                                                                   FontSize="11"/>
+                                                                   FontSize="13"/>
                                                     </StackPanel>
                                                     <!-- Current value -->
                                                     <TextBlock Text="{Binding CurrentValue, StringFormat='{}{0:F2}'}"
-                                                               FontFamily="Consolas" FontSize="18" FontWeight="Bold"
+                                                               FontFamily="Consolas" FontSize="22" FontWeight="Bold"
                                                                Foreground="#E8E8F0"/>
-                                                    <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="10"
+                                                    <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="13"
                                                                Margin="0,2,0,0"/>
                                                 </StackPanel>
                                             </Border>
@@ -152,8 +152,8 @@
             <Border Background="#23233D" CornerRadius="8" Padding="16" Margin="0,4,0,0">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
-                        <TextBlock Text="最新告警" FontSize="14" FontWeight="SemiBold" Foreground="#E8E8F0"/>
-                        <TextBlock Text="查看全部 >" Foreground="#448AFF" FontSize="12" Cursor="Hand"
+                        <TextBlock Text="最新告警" FontSize="17" FontWeight="SemiBold" Foreground="#E8E8F0"/>
+                        <TextBlock Text="查看全部 >" Foreground="#448AFF" Cursor="Hand"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </DockPanel>
                     <ItemsControl ItemsSource="{Binding RecentAlarms}" MaxHeight="120">
@@ -169,18 +169,18 @@
                                             </Border.Style>
                                         </Border>
                                         <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" 
-                                                   Foreground="#9898B0" FontFamily="Consolas" FontSize="12"
+                                                   Foreground="#9898B0" FontFamily="Consolas"
                                                    VerticalAlignment="Center" Margin="0,0,10,0"/>
                                         <TextBlock Text="{Binding ChannelName}" Foreground="#E8E8F0" FontWeight="SemiBold"
-                                                   FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="{Binding Message}" Foreground="#9898B0" FontSize="12"
+                                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="{Binding Message}" Foreground="#9898B0"
                                                    VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="暂无告警" Foreground="#55556A" FontSize="12" HorizontalAlignment="Center"
+                    <TextBlock Text="暂无告警" Foreground="#55556A" HorizontalAlignment="Center"
                                Margin="0,8,0,8">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">

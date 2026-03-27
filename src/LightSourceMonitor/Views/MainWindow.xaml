@@ -10,7 +10,8 @@
         WindowState="Maximized"
         Background="#151525"
         NonClientAreaBackground="#151525"
-        NonClientAreaForeground="#E8E8F0">
+        NonClientAreaForeground="#E8E8F0"
+        TextElement.FontSize="14">
     
     <hc:Window.Resources>
         <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
@@ -29,11 +30,11 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="60"/>
+            <ColumnDefinition Width="72"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>
+            <RowDefinition Height="56"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -49,7 +50,7 @@
                 <!-- Logo + Title -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Ellipse Width="12" Height="12" Fill="#448AFF" Margin="0,0,10,0"/>
-                    <TextBlock Text="集成光源监控系统" FontSize="16" FontWeight="SemiBold" 
+                    <TextBlock Text="集成光源监控系统" FontSize="20" FontWeight="SemiBold" 
                                Foreground="#E8E8F0" VerticalAlignment="Center"/>
                 </StackPanel>
 
@@ -96,7 +97,7 @@
         <!-- Left Navigation -->
         <Border Grid.Row="1" Background="#1B1B2F" BorderBrush="#334466" BorderThickness="0,0,1,0">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Bottom" Text="v1.0.0" Foreground="#55556A" FontSize="9"
+                <TextBlock DockPanel.Dock="Bottom" Text="v1.0.0" Foreground="#55556A" FontSize="10"
                            HorizontalAlignment="Center" Margin="0,0,0,10"/>
                 <ListBox SelectedIndex="{Binding SelectedNavIndex, Mode=TwoWay}"
                          Background="Transparent" BorderThickness="0" Margin="0,8,0,0">
@@ -109,10 +110,10 @@
                                                 Background="Transparent" CornerRadius="4" Margin="4,2">
                                             <StackPanel HorizontalAlignment="Center">
                                                 <TextBlock x:Name="Icon" HorizontalAlignment="Center"
-                                                           FontSize="20" Foreground="#9898B0"
+                                                           FontSize="24" Foreground="#9898B0"
                                                            Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
                                                 <TextBlock x:Name="Label" HorizontalAlignment="Center"
-                                                           FontSize="9" Foreground="#9898B0" Margin="0,4,0,0"
+                                                           FontSize="11" Foreground="#9898B0" Margin="0,4,0,0"
                                                            Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"/>
                                             </StackPanel>
                                         </Border>
