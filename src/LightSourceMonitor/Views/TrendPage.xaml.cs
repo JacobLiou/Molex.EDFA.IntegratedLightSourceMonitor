@@ -14,6 +14,12 @@ public partial class TrendPage : UserControl
         InitializeComponent();
     }
 
+    private void DataTypeRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not TrendViewModel vm) return;
+        vm.ShowPower = sender == RbPower;
+    }
+
     private void ExportPng_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.SaveFileDialog

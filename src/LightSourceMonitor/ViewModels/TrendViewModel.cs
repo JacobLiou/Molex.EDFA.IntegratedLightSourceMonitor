@@ -35,7 +35,6 @@ public partial class TrendViewModel : ObservableObject
     [ObservableProperty] private Axis[] _yAxes = Array.Empty<Axis>();
     [ObservableProperty] private string _selectedTimeRange = "最近1小时";
     [ObservableProperty] private bool _showPower = true;
-    [ObservableProperty] private bool _showWavelength;
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private int _dataPointCount;
 
@@ -92,20 +91,14 @@ public partial class TrendViewModel : ObservableObject
 
     partial void OnShowPowerChanged(bool value)
     {
-        if (value)
-        {
-            InitializeAxes();
-            _ = LoadDataAsync();
-        }
+        InitializeAxes();
+        _ = ReloadData();
     }
 
-    partial void OnShowWavelengthChanged(bool value)
+    private async Task ReloadData()
     {
-        if (value)
-        {
-            InitializeAxes();
-            _ = LoadDataAsync();
-        }
+        _isLoading = false;
+        await LoadDataAsync();
     }
 
     [RelayCommand]
