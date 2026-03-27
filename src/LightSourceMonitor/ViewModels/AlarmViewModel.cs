@@ -1,12 +1,13 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Alarm;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace LightSourceMonitor.ViewModels;
 
@@ -45,12 +46,12 @@ public partial class AlarmViewModel : ObservableObject
         _alarmService = alarmService;
 
         _alarmService.AlarmRaised += OnAlarmRaised;
-        _ = LoadAlarmsAsync();
+        LoadAlarmsAsync().SafeFireAndForget("AlarmViewModel.LoadAlarms");
     }
 
-    partial void OnSelectedLevelChanged(string value) => _ = LoadAlarmsAsync();
-    partial void OnSelectedTimeRangeChanged(string value) => _ = LoadAlarmsAsync();
-    partial void OnSearchTextChanged(string value) => _ = LoadAlarmsAsync();
+    partial void OnSelectedLevelChanged(string value) => LoadAlarmsAsync().SafeFireAndForget("AlarmVM.FilterLevel");
+    partial void OnSelectedTimeRangeChanged(string value) => LoadAlarmsAsync().SafeFireAndForget("AlarmVM.FilterTime");
+    partial void OnSearchTextChanged(string value) => LoadAlarmsAsync().SafeFireAndForget("AlarmVM.FilterSearch");
 
     private async Task LoadAlarmsAsync()
     {
@@ -90,7 +91,7 @@ public partial class AlarmViewModel : ObservableObject
                     r.ChannelName.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
-            Application.Current.Dispatcher.Invoke(() =>
+            AsyncHelper.SafeDispatcherInvoke(() =>
             {
                 Alarms.Clear();
                 foreach (var r in records)
@@ -98,15 +99,15 @@ public partial class AlarmViewModel : ObservableObject
                 TotalAlarmCount = Alarms.Count;
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // silently fail on load
+            Log.Error(ex, "Failed to load alarm records");
         }
     }
 
     private void OnAlarmRaised(AlarmEvent alarm)
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        AsyncHelper.SafeDispatcherInvoke(() =>
         {
             var vm = ToViewModel(alarm);
             Alarms.Insert(0, vm);

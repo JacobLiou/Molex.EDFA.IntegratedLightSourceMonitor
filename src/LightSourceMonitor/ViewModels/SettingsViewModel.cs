@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Drivers;
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Email;
@@ -54,7 +55,7 @@ public partial class SettingsViewModel : ObservableObject
         _emailService = emailService;
         _tmsService = tmsService;
         _logger = logger;
-        _ = LoadSettingsAsync();
+        LoadSettingsAsync().SafeFireAndForget("SettingsViewModel.LoadSettings");
     }
 
     private async Task LoadSettingsAsync()

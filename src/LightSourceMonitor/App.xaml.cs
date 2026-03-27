@@ -29,38 +29,49 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        DispatcherUnhandledException += (_, args) =>
-        {
-            Log.Error(args.Exception, "Unhandled UI exception");
-            MessageBox.Show($"发生未处理的错误:\n{args.Exception.Message}", "错误",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            args.Handled = true;
-        };
+        // ── Global exception handlers ──────────────────────────────────
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        try
         {
-            if (args.ExceptionObject is Exception ex)
-                Log.Fatal(ex, "Fatal domain exception");
-        };
+            await InitializeApplicationAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Application startup failed");
+            MessageBox.Show($"应用程序启动失败:\n{ex.Message}\n\n详情请查看日志文件。",
+                "启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
+    }
 
-        TaskScheduler.UnobservedTaskException += (_, args) =>
-        {
-            Log.Error(args.Exception, "Unobserved task exception");
-            args.SetObserved();
-        };
+    private async Task InitializeApplicationAsync()
+    {
+        // Serilog bootstrap (before host, so early errors are captured)
+        var logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+        Directory.CreateDirectory(logDir);
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .Enrich.WithProperty("App", "LightSourceMonitor")
+            .WriteTo.Console()
+            .WriteTo.File(
+                Path.Combine(logDir, "log-.txt"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+
+        Log.Information("=== LightSourceMonitor starting ===");
 
         LiveCharts.Configure(config => config
             .AddSkiaSharp()
             .AddDarkTheme());
 
         _host = Host.CreateDefaultBuilder()
-            .UseSerilog((context, services, configuration) => configuration
-                .MinimumLevel.Information()
-                .WriteTo.Console()
-                .WriteTo.File(
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "log-.txt"),
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30))
+            .UseSerilog()
             .ConfigureServices((context, services) =>
             {
                 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "monitor.db");
@@ -93,10 +104,12 @@ public partial class App : Application
             })
             .Build();
 
+        // Database migration & seed
         using (var scope = _host.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
             await db.Database.MigrateAsync();
+            Log.Information("Database migrated successfully");
 
             if (!await db.LaserChannels.AnyAsync())
             {
@@ -122,17 +135,81 @@ public partial class App : Application
 
         var acq = _host.Services.GetRequiredService<IAcquisitionService>();
         var mainVm = _host.Services.GetRequiredService<MainViewModel>();
-        acq.DataAcquired += _ => Current.Dispatcher.Invoke(() => mainVm.UpdateLastAcquisitionTime());
+        acq.DataAcquired += _ =>
+        {
+            try
+            {
+                Current?.Dispatcher?.Invoke(() => mainVm.UpdateLastAcquisitionTime());
+            }
+            catch (Exception) { /* shutdown race */ }
+        };
         await acq.StartAsync();
+        Log.Information("Acquisition service started");
     }
+
+    // ── Exception handlers ──────────────────────────────────────────
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        Log.Error(e.Exception, "Unhandled UI thread exception: {Message}", e.Exception.Message);
+        e.Handled = true;
+
+        try
+        {
+            MessageBox.Show(
+                $"发生未处理的错误:\n{e.Exception.Message}\n\n详情请查看日志文件。",
+                "运行时错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch { /* MessageBox itself could fail during shutdown */ }
+    }
+
+    private static void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception ex)
+            Log.Fatal(ex, "Fatal domain exception (IsTerminating={IsTerminating})", e.IsTerminating);
+        else
+            Log.Fatal("Fatal domain exception (non-Exception object): {Obj}", e.ExceptionObject);
+
+        Log.CloseAndFlush();
+    }
+
+    private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        Log.Error(e.Exception, "Unobserved task exception ({Count} inner exceptions)",
+            e.Exception?.InnerExceptions.Count ?? 0);
+        e.SetObserved();
+    }
+
+    // ── Shutdown ────────────────────────────────────────────────────
 
     protected override async void OnExit(ExitEventArgs e)
     {
-        if (_host != null)
+        Log.Information("=== LightSourceMonitor shutting down ===");
+
+        try
         {
-            await _host.StopAsync();
-            _host.Dispose();
+            if (_host != null)
+            {
+                var acq = _host.Services.GetService<IAcquisitionService>();
+                if (acq?.IsRunning == true)
+                {
+                    await acq.StopAsync();
+                    Log.Information("Acquisition service stopped");
+                }
+
+                await _host.StopAsync(TimeSpan.FromSeconds(5));
+                _host.Dispose();
+            }
         }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error during shutdown");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
+
         base.OnExit(e);
     }
 }

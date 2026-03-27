@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Services.Trend;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -47,7 +48,7 @@ public partial class TrendViewModel : ObservableObject
         _services = services;
         _logger = logger;
         InitializeAxes();
-        _ = LoadDataAsync();
+        LoadDataAsync().SafeFireAndForget("TrendViewModel.InitialLoad");
     }
 
     private void InitializeAxes()
@@ -86,13 +87,13 @@ public partial class TrendViewModel : ObservableObject
 
     partial void OnSelectedTimeRangeChanged(string value)
     {
-        _ = LoadDataAsync();
+        LoadDataAsync().SafeFireAndForget("TrendVM.TimeRangeChanged");
     }
 
     partial void OnShowPowerChanged(bool value)
     {
         InitializeAxes();
-        _ = ReloadData();
+        ReloadData().SafeFireAndForget("TrendVM.DataTypeChanged");
     }
 
     private async Task ReloadData()

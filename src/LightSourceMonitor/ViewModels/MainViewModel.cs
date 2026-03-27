@@ -1,7 +1,7 @@
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Drivers;
+using Serilog;
 
 namespace LightSourceMonitor.ViewModels;
 
@@ -43,14 +43,21 @@ public partial class MainViewModel : ObservableObject
 
     public void NavigateTo(int index)
     {
-        CurrentPage = index switch
+        try
         {
-            0 => _services.GetService(typeof(OverviewViewModel)),
-            1 => _services.GetService(typeof(TrendViewModel)),
-            2 => _services.GetService(typeof(AlarmViewModel)),
-            3 => _services.GetService(typeof(SettingsViewModel)),
-            _ => CurrentPage
-        };
+            CurrentPage = index switch
+            {
+                0 => _services.GetService(typeof(OverviewViewModel)),
+                1 => _services.GetService(typeof(TrendViewModel)),
+                2 => _services.GetService(typeof(AlarmViewModel)),
+                3 => _services.GetService(typeof(SettingsViewModel)),
+                _ => CurrentPage
+            };
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to navigate to page index {Index}", index);
+        }
     }
 
     public void UpdateGlobalStatus(string status, string color)

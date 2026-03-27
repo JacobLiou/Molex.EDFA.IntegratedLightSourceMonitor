@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using LightSourceMonitor.Data;
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Email;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,7 +76,7 @@ public class AlarmService : IAlarmService
             _logger.LogError(ex, "Failed to save alarm event");
         }
 
-        AlarmRaised?.Invoke(alarm);
+        AlarmRaised.SafeInvoke(alarm, nameof(AlarmRaised));
         _logger.LogWarning("Alarm: {Type} on {Channel} — measured={Value:F3}, spec={Spec:F3}, delta={Delta:F3}",
             alarm.AlarmType, channel.ChannelName, alarm.MeasuredValue, alarm.SpecValue, alarm.Delta);
 

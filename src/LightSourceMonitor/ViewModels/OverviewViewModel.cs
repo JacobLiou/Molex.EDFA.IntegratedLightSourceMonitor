@@ -1,13 +1,14 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Alarm;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace LightSourceMonitor.ViewModels;
 
@@ -78,7 +79,7 @@ public partial class OverviewViewModel : ObservableObject
         _acquisitionService.DataAcquired += OnDataAcquired;
         _alarmService.AlarmRaised += OnAlarmRaised;
 
-        _ = LoadChannelsAsync();
+        LoadChannelsAsync().SafeFireAndForget("OverviewViewModel.LoadChannels");
     }
 
     private async Task LoadChannelsAsync()
@@ -90,7 +91,7 @@ public partial class OverviewViewModel : ObservableObject
             .OrderBy(c => c.ChannelIndex)
             .ToListAsync();
 
-        Application.Current.Dispatcher.Invoke(() =>
+        AsyncHelper.SafeDispatcherInvoke(() =>
         {
             DeviceGroups.Clear();
             _channelMap.Clear();
@@ -128,7 +129,7 @@ public partial class OverviewViewModel : ObservableObject
 
     private void OnDataAcquired(Dictionary<int, MeasurementRecord> batch)
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        AsyncHelper.SafeDispatcherInvoke(() =>
         {
             foreach (var kvp in batch)
             {
@@ -143,7 +144,7 @@ public partial class OverviewViewModel : ObservableObject
 
     private void OnAlarmRaised(AlarmEvent alarm)
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        AsyncHelper.SafeDispatcherInvoke(() =>
         {
             string channelName = _channelMap.TryGetValue(alarm.ChannelId, out var entry) ? entry.card.ChannelName : $"CH{alarm.ChannelId}";
             var item = new AlarmItemViewModel

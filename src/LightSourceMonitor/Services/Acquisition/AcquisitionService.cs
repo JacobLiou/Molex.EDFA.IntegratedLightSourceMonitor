@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Drivers;
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Alarm;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public class AcquisitionService : IAcquisitionService
     private CancellationTokenSource? _cts;
     private Task? _runningTask;
     private int _sampleCount;
+    private int _consecutiveErrors;
 
     public bool IsRunning { get; private set; }
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
@@ -48,14 +50,31 @@ public class AcquisitionService : IAcquisitionService
     {
         if (IsRunning) return Task.CompletedTask;
 
-        if (!_pdDriver.IsOpen)
+        try
         {
-            _pdDriver.Open("SIM");
-            _pdDriver.Initialize();
+            if (!_pdDriver.IsOpen)
+            {
+                _pdDriver.Open("SIM");
+                _pdDriver.Initialize();
+            }
         }
-        if (!_wmDriver.IsInitialized)
+        catch (Exception ex)
         {
-            _wmDriver.Init("");
+            _logger.LogError(ex, "Failed to initialize PD driver");
+            throw;
+        }
+
+        try
+        {
+            if (!_wmDriver.IsInitialized)
+            {
+                _wmDriver.Init("");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize WM driver");
+            throw;
         }
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -69,22 +88,33 @@ public class AcquisitionService : IAcquisitionService
     {
         if (!IsRunning || _cts == null) return;
 
+        _logger.LogInformation("Acquisition stopping...");
         _cts.Cancel();
         IsRunning = false;
 
         if (_runningTask != null)
         {
-            try { await _runningTask; }
+            try { await _runningTask.WaitAsync(TimeSpan.FromSeconds(10)); }
             catch (OperationCanceledException) { }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("Acquisition loop did not stop within timeout");
+            }
         }
 
-        _pdDriver.Close();
-        _wmDriver.Close();
+        try { _pdDriver.Close(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Error closing PD driver"); }
+
+        try { _wmDriver.Close(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Error closing WM driver"); }
+
         _logger.LogInformation("Acquisition stopped");
     }
 
     private async Task AcquisitionLoop(CancellationToken ct)
     {
+        _logger.LogInformation("Acquisition loop entered");
+
         while (!ct.IsCancellationRequested)
         {
             try
@@ -117,11 +147,18 @@ public class AcquisitionService : IAcquisitionService
 
                     if (doWmSweep)
                     {
-                        _wmDriver.SetParameters(i, 0, ch.SpecWavelength - 5, ch.SpecWavelength + 5, 3.0, -30.0);
-                        _wmDriver.ExecuteSingleSweep(i);
-                        var result = _wmDriver.GetResult(i);
-                        if (result.HasValue && result.Value.count > 0)
-                            wavelength = result.Value.wavelengths[0];
+                        try
+                        {
+                            _wmDriver.SetParameters(i, 0, ch.SpecWavelength - 5, ch.SpecWavelength + 5, 3.0, -30.0);
+                            _wmDriver.ExecuteSingleSweep(i);
+                            var result = _wmDriver.GetResult(i);
+                            if (result.HasValue && result.Value.count > 0)
+                                wavelength = result.Value.wavelengths[0];
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "WM sweep failed for channel {Ch}", ch.ChannelName);
+                        }
                     }
 
                     var record = new MeasurementRecord
@@ -138,27 +175,60 @@ public class AcquisitionService : IAcquisitionService
 
                 if (_sampleCount % DbWriteEveryN == 0)
                 {
-                    db.MeasurementRecords.AddRange(batch.Values);
-                    await db.SaveChangesAsync(ct);
+                    try
+                    {
+                        db.MeasurementRecords.AddRange(batch.Values);
+                        await db.SaveChangesAsync(ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to write measurement batch to DB");
+                    }
                 }
 
                 foreach (var kvp in batch)
                 {
-                    await _channel.Writer.WriteAsync(kvp.Value, ct);
-                    var ch = channels.First(c => c.Id == kvp.Key);
-                    await _alarmService.EvaluateAsync(kvp.Value, ch);
+                    try
+                    {
+                        await _channel.Writer.WriteAsync(kvp.Value, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to write to channel");
+                    }
+
+                    try
+                    {
+                        var ch = channels.First(c => c.Id == kvp.Key);
+                        await _alarmService.EvaluateAsync(kvp.Value, ch);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Alarm evaluation failed for channelId={Id}", kvp.Key);
+                    }
                 }
 
-                DataAcquired?.Invoke(batch);
+                DataAcquired.SafeInvoke(batch, nameof(DataAcquired));
+                _consecutiveErrors = 0;
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Acquisition cycle error");
+                _consecutiveErrors++;
+                _logger.LogError(ex, "Acquisition cycle error (consecutive: {Count})", _consecutiveErrors);
+
+                if (_consecutiveErrors > 50)
+                {
+                    _logger.LogCritical("Too many consecutive errors ({Count}), pausing acquisition for 30s", _consecutiveErrors);
+                    try { await Task.Delay(30_000, ct); } catch { break; }
+                    _consecutiveErrors = 0;
+                }
             }
 
             try { await Task.Delay(SamplingIntervalMs, ct); }
             catch (OperationCanceledException) { break; }
         }
+
+        _logger.LogInformation("Acquisition loop exited");
     }
 }
