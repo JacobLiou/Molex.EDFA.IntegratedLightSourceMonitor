@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LightSourceMonitor.Drivers;
 
-public class WavelengthMeterDriver : IDisposable
+public class WavelengthMeterDriver : IWavelengthMeterDriver
 {
     private readonly ILogger<WavelengthMeterDriver> _logger;
     private dynamic? _engine;

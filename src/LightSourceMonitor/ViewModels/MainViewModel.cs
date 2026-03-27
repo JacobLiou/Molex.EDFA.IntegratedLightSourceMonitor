@@ -1,6 +1,7 @@
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LightSourceMonitor.Drivers;
 
 namespace LightSourceMonitor.ViewModels;
 
@@ -16,11 +17,13 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _globalStatus = "正常";
     [ObservableProperty] private string _globalStatusColor = "#00E676";
     [ObservableProperty] private string _lastAcquisitionTime = "--";
+    [ObservableProperty] private bool _isSimulationMode;
 
-    public MainViewModel(IServiceProvider services)
+    public MainViewModel(IServiceProvider services, IPdArrayDriver pdDriver)
     {
         _services = services;
         _startTime = DateTime.Now;
+        IsSimulationMode = pdDriver is SimulatedPdArrayDriver;
 
         _uptimeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _uptimeTimer.Tick += (_, _) =>

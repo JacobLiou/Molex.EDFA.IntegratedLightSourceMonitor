@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LightSourceMonitor.Drivers;
 
-public class PdArrayDriver : IDisposable
+public class PdArrayDriver : IPdArrayDriver
 {
     private const int PdVid = 0x05A6;
     private const int PdPid = 0x49A5;

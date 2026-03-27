@@ -1,13 +1,18 @@
 <Application x:Class="LightSourceMonitor.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:hc="https://handyorg.github.io/handycontrol">
+             xmlns:hc="https://handyorg.github.io/handycontrol"
+             xmlns:conv="clr-namespace:LightSourceMonitor.Converters">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HandyControl;component/Themes/SkinDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HandyControl;component/Themes/Theme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converters -->
+            <conv:StringToBrushConverter x:Key="StringToBrush"/>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
 
             <!-- Global Styles -->
             <Style x:Key="MonoValueText" TargetType="TextBlock">

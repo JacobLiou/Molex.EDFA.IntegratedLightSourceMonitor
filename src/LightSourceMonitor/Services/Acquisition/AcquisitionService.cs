@@ -15,6 +15,8 @@ public class AcquisitionService : IAcquisitionService
     private readonly ILogger<AcquisitionService> _logger;
     private readonly Channel<MeasurementRecord> _channel;
     private readonly IAlarmService _alarmService;
+    private readonly IPdArrayDriver _pdDriver;
+    private readonly IWavelengthMeterDriver _wmDriver;
     private CancellationTokenSource? _cts;
     private Task? _runningTask;
     private int _sampleCount;
@@ -23,29 +25,43 @@ public class AcquisitionService : IAcquisitionService
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
 
     public int SamplingIntervalMs { get; set; } = 2000;
-    public int WmSweepEveryN { get; set; } = 100;
-    public int DbWriteEveryN { get; set; } = 10;
+    public int WmSweepEveryN { get; set; } = 5;
+    public int DbWriteEveryN { get; set; } = 1;
 
     public AcquisitionService(
         IServiceProvider services,
         ILogger<AcquisitionService> logger,
         Channel<MeasurementRecord> channel,
-        IAlarmService alarmService)
+        IAlarmService alarmService,
+        IPdArrayDriver pdDriver,
+        IWavelengthMeterDriver wmDriver)
     {
         _services = services;
         _logger = logger;
         _channel = channel;
         _alarmService = alarmService;
+        _pdDriver = pdDriver;
+        _wmDriver = wmDriver;
     }
 
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (IsRunning) return Task.CompletedTask;
 
+        if (!_pdDriver.IsOpen)
+        {
+            _pdDriver.Open("SIM");
+            _pdDriver.Initialize();
+        }
+        if (!_wmDriver.IsInitialized)
+        {
+            _wmDriver.Init("");
+        }
+
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         IsRunning = true;
         _runningTask = Task.Run(() => AcquisitionLoop(_cts.Token), _cts.Token);
-        _logger.LogInformation("Acquisition started");
+        _logger.LogInformation("Acquisition started (PD={PdSN}, WM={WmInit})", _pdDriver.DeviceSN, _wmDriver.IsInitialized);
         return Task.CompletedTask;
     }
 
@@ -62,6 +78,8 @@ public class AcquisitionService : IAcquisitionService
             catch (OperationCanceledException) { }
         }
 
+        _pdDriver.Close();
+        _wmDriver.Close();
         _logger.LogInformation("Acquisition stopped");
     }
 
@@ -71,13 +89,13 @@ public class AcquisitionService : IAcquisitionService
         {
             try
             {
-                var batch = new Dictionary<int, MeasurementRecord>();
                 var now = DateTime.Now;
 
                 using var scope = _services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
                 var channels = await db.LaserChannels
                     .Where(c => c.IsEnabled)
+                    .OrderBy(c => c.ChannelIndex)
                     .ToListAsync(ct);
 
                 if (channels.Count == 0)
@@ -86,16 +104,34 @@ public class AcquisitionService : IAcquisitionService
                     continue;
                 }
 
-                foreach (var channel in channels)
+                var powers = _pdDriver.GetActualPower(channels.Count);
+                bool doWmSweep = (_sampleCount % WmSweepEveryN == 0);
+
+                var batch = new Dictionary<int, MeasurementRecord>();
+
+                for (int i = 0; i < channels.Count; i++)
                 {
+                    var ch = channels[i];
+                    double power = powers != null && i < powers.Length ? powers[i] : 0;
+                    double wavelength = ch.SpecWavelength;
+
+                    if (doWmSweep)
+                    {
+                        _wmDriver.SetParameters(i, 0, ch.SpecWavelength - 5, ch.SpecWavelength + 5, 3.0, -30.0);
+                        _wmDriver.ExecuteSingleSweep(i);
+                        var result = _wmDriver.GetResult(i);
+                        if (result.HasValue && result.Value.count > 0)
+                            wavelength = result.Value.wavelengths[0];
+                    }
+
                     var record = new MeasurementRecord
                     {
-                        ChannelId = channel.Id,
+                        ChannelId = ch.Id,
                         Timestamp = now,
-                        Power = 0,
-                        Wavelength = 0
+                        Power = power,
+                        Wavelength = wavelength
                     };
-                    batch[channel.Id] = record;
+                    batch[ch.Id] = record;
                 }
 
                 _sampleCount++;
