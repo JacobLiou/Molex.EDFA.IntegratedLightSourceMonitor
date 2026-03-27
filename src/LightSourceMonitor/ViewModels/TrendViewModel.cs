@@ -1,8 +1,5 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
@@ -13,6 +10,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SkiaSharp;
 
 namespace LightSourceMonitor.ViewModels;
@@ -29,26 +27,34 @@ public partial class TrendViewModel : ObservableObject
 
     private readonly ITrendService _trendService;
     private readonly IServiceProvider _services;
+    private readonly ILogger<TrendViewModel> _logger;
+    private bool _isLoading;
 
     [ObservableProperty] private ObservableCollection<ISeries> _series = new();
     [ObservableProperty] private Axis[] _xAxes = Array.Empty<Axis>();
     [ObservableProperty] private Axis[] _yAxes = Array.Empty<Axis>();
-    [ObservableProperty] private string _selectedTimeRange = "最近24小时";
+    [ObservableProperty] private string _selectedTimeRange = "最近1小时";
     [ObservableProperty] private bool _showPower = true;
     [ObservableProperty] private bool _showWavelength;
+    [ObservableProperty] private string _statusText = "";
+    [ObservableProperty] private int _dataPointCount;
 
     public string[] TimeRangeOptions { get; } =
         { "最近1小时", "最近24小时", "最近7天", "最近30天" };
 
-    public TrendViewModel(ITrendService trendService, IServiceProvider services)
+    public TrendViewModel(ITrendService trendService, IServiceProvider services, ILogger<TrendViewModel> logger)
     {
         _trendService = trendService;
         _services = services;
+        _logger = logger;
         InitializeAxes();
+        _ = LoadDataAsync();
     }
 
     private void InitializeAxes()
     {
+        bool isPower = ShowPower;
+
         XAxes = new Axis[]
         {
             new Axis
@@ -70,10 +76,11 @@ public partial class TrendViewModel : ObservableObject
         {
             new Axis
             {
-                Name = ShowPower ? "功率 (dBm)" : "波长 (nm)",
+                Name = isPower ? "功率 (dBm)" : "波长 (nm)",
                 NamePaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 LabelsPaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 SeparatorsPaint = new SolidColorPaint(SKColor.Parse("#2D2D4A")) { StrokeThickness = 1 },
+                Labeler = value => isPower ? $"{value:F1}" : $"{value:F2}",
             }
         };
     }
@@ -83,36 +90,81 @@ public partial class TrendViewModel : ObservableObject
         _ = LoadDataAsync();
     }
 
+    partial void OnShowPowerChanged(bool value)
+    {
+        if (value)
+        {
+            InitializeAxes();
+            _ = LoadDataAsync();
+        }
+    }
+
+    partial void OnShowWavelengthChanged(bool value)
+    {
+        if (value)
+        {
+            InitializeAxes();
+            _ = LoadDataAsync();
+        }
+    }
+
+    [RelayCommand]
     public async Task LoadDataAsync()
     {
-        var (from, to) = GetTimeRange();
+        if (_isLoading) return;
+        _isLoading = true;
 
-        using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-        var channels = await db.LaserChannels.Where(c => c.IsEnabled).ToListAsync();
-
-        Series.Clear();
-        int colorIdx = 0;
-
-        foreach (var channel in channels)
+        try
         {
-            var data = await _trendService.GetTrendDataAsync(channel.Id, from, to);
-            if (data.Count == 0) continue;
+            StatusText = "加载中...";
+            var (from, to) = GetTimeRange();
 
-            var values = data.Select(r => new DateTimePoint(r.Timestamp,
-                ShowPower ? r.Power : r.Wavelength)).ToArray();
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            var channels = await db.LaserChannels.Where(c => c.IsEnabled)
+                .OrderBy(c => c.ChannelIndex).ToListAsync();
 
-            var color = ChannelColors[colorIdx % ChannelColors.Length];
-            Series.Add(new LineSeries<DateTimePoint>
+            var newSeries = new ObservableCollection<ISeries>();
+            int colorIdx = 0;
+            int totalPoints = 0;
+
+            foreach (var channel in channels)
             {
-                Name = channel.ChannelName,
-                Values = values,
-                Stroke = new SolidColorPaint(color) { StrokeThickness = 2 },
-                Fill = null,
-                GeometrySize = 0,
-                LineSmoothness = 0.3
-            });
-            colorIdx++;
+                var data = await _trendService.GetTrendDataAsync(channel.Id, from, to);
+                if (data.Count == 0) continue;
+
+                var values = data.Select(r => new DateTimePoint(r.Timestamp,
+                    ShowPower ? r.Power : r.Wavelength)).ToArray();
+
+                totalPoints += values.Length;
+
+                var color = ChannelColors[colorIdx % ChannelColors.Length];
+                newSeries.Add(new LineSeries<DateTimePoint>
+                {
+                    Name = channel.ChannelName,
+                    Values = values,
+                    Stroke = new SolidColorPaint(color) { StrokeThickness = 2 },
+                    Fill = null,
+                    GeometrySize = 0,
+                    LineSmoothness = 0.3
+                });
+                colorIdx++;
+            }
+
+            Series = newSeries;
+            DataPointCount = totalPoints;
+            StatusText = totalPoints > 0
+                ? $"共 {channels.Count} 通道, {totalPoints} 数据点"
+                : "暂无数据 — 请等待采集系统产生数据后刷新";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load trend data");
+            StatusText = $"加载失败: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -131,35 +183,50 @@ public partial class TrendViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ExportCsv()
+    private async Task ExportCsv()
     {
-        var dialog = new Microsoft.Win32.SaveFileDialog
+        try
         {
-            Filter = "CSV Files|*.csv",
-            DefaultExt = ".csv",
-            FileName = $"trend_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
-        };
-
-        if (dialog.ShowDialog() != true) return;
-
-        using var writer = new StreamWriter(dialog.FileName);
-        writer.WriteLine("时间,通道,值");
-        foreach (var s in Series)
-        {
-            if (s is LineSeries<DateTimePoint> line && line.Values != null)
+            var dataType = ShowPower ? "功率" : "波长";
+            var dialog = new Microsoft.Win32.SaveFileDialog
             {
-                foreach (var pt in line.Values)
-                {
-                    writer.WriteLine($"{pt.DateTime:yyyy-MM-dd HH:mm:ss},{line.Name},{pt.Value:F3}");
-                }
-            }
-        }
-    }
+                Filter = "CSV Files|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"trend_{dataType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
 
-    [RelayCommand]
-    private void ExportPng()
-    {
-        // PNG export uses RenderTargetBitmap on the chart control
+            if (dialog.ShowDialog() != true) return;
+
+            var (from, to) = GetTimeRange();
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            var channels = await db.LaserChannels.Where(c => c.IsEnabled)
+                .OrderBy(c => c.ChannelIndex).ToListAsync();
+
+            var allRecords = new List<(string chName, Models.MeasurementRecord rec)>();
+            foreach (var ch in channels)
+            {
+                var data = await _trendService.GetTrendDataAsync(ch.Id, from, to);
+                foreach (var r in data)
+                    allRecords.Add((ch.ChannelName, r));
+            }
+
+            allRecords.Sort((a, b) => a.rec.Timestamp.CompareTo(b.rec.Timestamp));
+
+            using var writer = new StreamWriter(dialog.FileName, false, System.Text.Encoding.UTF8);
+            writer.WriteLine("时间,通道,功率(dBm),波长(nm)");
+            foreach (var (chName, rec) in allRecords)
+            {
+                writer.WriteLine($"{rec.Timestamp:yyyy-MM-dd HH:mm:ss.fff},{chName},{rec.Power:F3},{rec.Wavelength:F4}");
+            }
+
+            var fileInfo = new System.IO.FileInfo(dialog.FileName);
+            StatusText = $"已导出 {allRecords.Count} 条记录到 {fileInfo.Name}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"CSV 导出失败: {ex.Message}";
+        }
     }
 
     public static SKColor GetChannelColor(int index) => ChannelColors[index % ChannelColors.Length];
