@@ -6,6 +6,7 @@ using LightSourceMonitor.Services.Alarm;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace LightSourceMonitor.Services.Acquisition;
 
@@ -16,6 +17,7 @@ public class AcquisitionService : IAcquisitionService
     private readonly IAlarmService _alarmService;
     private readonly IPdArrayDriver _pdDriver;
     private readonly IWavelengthMeterDriver _wmDriver;
+    private readonly DriverSettings _driverSettings;
     private CancellationTokenSource? _cts;
     private Task? _runningTask;
     private int _sampleCount;
@@ -33,13 +35,15 @@ public class AcquisitionService : IAcquisitionService
         ILogger<AcquisitionService> logger,
         IAlarmService alarmService,
         IPdArrayDriver pdDriver,
-        IWavelengthMeterDriver wmDriver)
+        IWavelengthMeterDriver wmDriver,
+        IOptions<DriverSettings> driverOptions)
     {
         _services = services;
         _logger = logger;
         _alarmService = alarmService;
         _pdDriver = pdDriver;
         _wmDriver = wmDriver;
+        _driverSettings = driverOptions.Value;
     }
 
     public Task StartAsync(CancellationToken cancellationToken = default)
@@ -50,7 +54,10 @@ public class AcquisitionService : IAcquisitionService
         {
             if (!_pdDriver.IsOpen)
             {
-                _pdDriver.Open("SIM");
+                var pdOpenArg = string.IsNullOrWhiteSpace(_driverSettings.PdOpenArgument)
+                    ? "SIM"
+                    : _driverSettings.PdOpenArgument;
+                _pdDriver.Open(pdOpenArg);
                 _pdDriver.Initialize();
             }
         }
@@ -64,7 +71,7 @@ public class AcquisitionService : IAcquisitionService
         {
             if (!_wmDriver.IsInitialized)
             {
-                _wmDriver.Init("");
+                _wmDriver.Init(_driverSettings.WmConfigXmlPath ?? string.Empty);
             }
         }
         catch (Exception ex)

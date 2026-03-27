@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -74,16 +75,27 @@ public partial class App : Application
             .UseSerilog()
             .ConfigureServices((context, services) =>
             {
+                services.Configure<DriverSettings>(context.Configuration.GetSection("Driver"));
+
                 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "monitor.db");
                 services.AddDbContext<MonitorDbContext>(opts =>
                     opts.UseSqlite($"Data Source={dbPath}"),
                     ServiceLifetime.Transient);
 
-                // Hardware drivers — swap to real drivers on production IPC:
-                // services.AddSingleton<IPdArrayDriver, PdArrayDriver>();
-                // services.AddSingleton<IWavelengthMeterDriver, WavelengthMeterDriver>();
-                services.AddSingleton<IPdArrayDriver, SimulatedPdArrayDriver>();
-                services.AddSingleton<IWavelengthMeterDriver, SimulatedWavelengthMeterDriver>();
+                var driverSettings = context.Configuration.GetSection("Driver").Get<DriverSettings>() ?? new DriverSettings();
+                var useSimulated = string.Equals(driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase);
+                if (useSimulated)
+                {
+                    services.AddSingleton<IPdArrayDriver, SimulatedPdArrayDriver>();
+                    services.AddSingleton<IWavelengthMeterDriver, SimulatedWavelengthMeterDriver>();
+                    Log.Information("Driver mode: Simulated");
+                }
+                else
+                {
+                    services.AddSingleton<IPdArrayDriver, PdArrayDriver>();
+                    services.AddSingleton<IWavelengthMeterDriver, WavelengthMeterDriver>();
+                    Log.Information("Driver mode: Hardware");
+                }
 
                 services.AddSingleton<IAlarmService, AlarmService>();
                 services.AddSingleton<IEmailService, EmailService>();
