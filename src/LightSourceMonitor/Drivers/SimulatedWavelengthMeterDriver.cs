@@ -55,9 +55,11 @@ public class SimulatedWavelengthMeterDriver : IWavelengthMeterDriver
         double centerWl = _params.TryGetValue(chIndex, out var p) ? p.CenterWl : 1310.0;
         double elapsed = (DateTime.UtcNow - _startTime).TotalSeconds;
 
-        double drift = 0.002 * Math.Sin(2 * Math.PI * elapsed / 600.0 + chIndex * 1.1);
-        double noise = NextGaussian() * 0.003;
-        double spike = _rng.NextDouble() < 0.005 ? (_rng.NextDouble() > 0.5 ? 0.02 : -0.02) : 0;
+        double drift = 0.015 * Math.Sin(2 * Math.PI * elapsed / 200.0 + chIndex * 1.1);
+        double noise = NextGaussian() * 0.008;
+        double spike = _rng.NextDouble() < 0.06
+            ? (_rng.NextDouble() > 0.5 ? 1 : -1) * (0.05 + _rng.NextDouble() * 0.08)
+            : 0;
 
         double wl = Math.Round(centerWl + drift + noise + spike, 4);
         double power = Math.Round(-10.0 + NextGaussian() * 0.5, 2);

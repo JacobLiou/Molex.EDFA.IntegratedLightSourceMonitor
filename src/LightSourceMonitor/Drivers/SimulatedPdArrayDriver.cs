@@ -55,11 +55,14 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
 
         for (int i = 0; i < count; i++)
         {
-            double drift = 0.05 * Math.Sin(2 * Math.PI * elapsed / 300.0 + i * 0.7);
-            double noise = NextGaussian() * 0.02;
-            double spike = _rng.NextDouble() < 0.01 ? (_rng.NextDouble() > 0.5 ? 0.3 : -0.3) : 0;
+            double slowDrift = 0.08 * Math.Sin(2 * Math.PI * elapsed / 180.0 + i * 0.7);
+            double fastDrift = 0.04 * Math.Sin(2 * Math.PI * elapsed / 30.0 + i * 1.3);
+            double noise = NextGaussian() * 0.03;
+            double spike = _rng.NextDouble() < 0.08
+                ? (_rng.NextDouble() > 0.5 ? 1 : -1) * (0.2 + _rng.NextDouble() * 0.25)
+                : 0;
 
-            powers[i] = Math.Round(_baselines[i] + drift + noise + spike, 3);
+            powers[i] = Math.Round(_baselines[i] + slowDrift + fastDrift + noise + spike, 3);
         }
 
         return powers;

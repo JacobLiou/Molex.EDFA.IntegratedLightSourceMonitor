@@ -92,7 +92,7 @@ public partial class SettingsViewModel : ObservableObject
             PdDriverStatus = pdDriver.IsOpen ? $"已连接 — {pdDriver.DeviceSN}" : "未连接";
             WmDriverStatus = wmDriver.IsInitialized ? "已初始化" : "未初始化";
 
-            var acq = (AcquisitionService)_services.GetRequiredService<IAcquisitionService>();
+            var acq = _services.GetRequiredService<IAcquisitionService>();
             IsAcquisitionRunning = acq.IsRunning;
             SamplingIntervalMs = acq.SamplingIntervalMs;
             WmSweepEveryN = acq.WmSweepEveryN;
@@ -172,7 +172,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var acq = (AcquisitionService)_services.GetRequiredService<IAcquisitionService>();
+            var acq = _services.GetRequiredService<IAcquisitionService>();
             acq.SamplingIntervalMs = SamplingIntervalMs;
             acq.WmSweepEveryN = WmSweepEveryN;
             acq.DbWriteEveryN = DbWriteEveryN;

@@ -19,6 +19,15 @@
                 <hc:SearchBar Width="200" SearchStarted="SearchBar_OnSearchStarted"
                               hc:InfoElement.Placeholder="搜索通道..."
                               Style="{StaticResource SearchBarExtend}" Margin="0,0,12,0"/>
+                <Button Command="{Binding RefreshCommand}" Margin="0,0,12,0" Padding="8,4"
+                        Style="{StaticResource ButtonPrimary}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔄" Margin="0,0,4,0"/>
+                        <TextBlock Text="刷新"/>
+                    </StackPanel>
+                </Button>
+                <TextBlock Text="{Binding TotalAlarmCount, StringFormat='共 {0} 条'}" Foreground="#9898B0"
+                           VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <ToggleButton IsChecked="{Binding IsMuted}" Margin="0,0,0,0" Padding="8,4">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🔇" Margin="0,0,4,0"/>
@@ -82,6 +91,14 @@
                         <Style TargetType="TextBlock">
                             <Setter Property="FontFamily" Value="Consolas"/>
                             <Setter Property="Foreground" Value="#9898B0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="偏差Δ" Binding="{Binding Delta, StringFormat='{}{0:F3}'}" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontFamily" Value="Consolas"/>
+                            <Setter Property="Foreground" Value="#FF1744"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
