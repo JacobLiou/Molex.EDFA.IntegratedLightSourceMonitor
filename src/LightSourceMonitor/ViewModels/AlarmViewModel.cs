@@ -24,10 +24,11 @@ public partial class AlarmRecordViewModel : ObservableObject
     [ObservableProperty] private bool _emailSent;
 }
 
-public partial class AlarmViewModel : ObservableObject
+public partial class AlarmViewModel : ObservableObject, IDisposable
 {
     private readonly IServiceProvider _services;
     private readonly IAlarmService _alarmService;
+    private bool _disposed;
     private Dictionary<int, string> _channelNames = new();
 
     [ObservableProperty] private ObservableCollection<AlarmRecordViewModel> _alarms = new();
@@ -152,5 +153,12 @@ public partial class AlarmViewModel : ObservableObject
     private async Task Refresh()
     {
         await LoadAlarmsAsync();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _alarmService.AlarmRaised -= OnAlarmRaised;
     }
 }

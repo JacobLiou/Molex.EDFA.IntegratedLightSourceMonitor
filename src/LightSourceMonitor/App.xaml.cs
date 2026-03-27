@@ -1,5 +1,4 @@
 using System.IO;
-using System.Threading.Channels;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +13,7 @@ using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Alarm;
 using LightSourceMonitor.Services.Email;
+using LightSourceMonitor.Services.Retention;
 using LightSourceMonitor.Services.Tms;
 using LightSourceMonitor.Services.Trend;
 using LightSourceMonitor.ViewModels;
@@ -79,9 +79,6 @@ public partial class App : Application
                     opts.UseSqlite($"Data Source={dbPath}"),
                     ServiceLifetime.Transient);
 
-                services.AddSingleton(Channel.CreateUnbounded<MeasurementRecord>(
-                    new UnboundedChannelOptions { SingleReader = false }));
-
                 // Hardware drivers — swap to real drivers on production IPC:
                 // services.AddSingleton<IPdArrayDriver, PdArrayDriver>();
                 // services.AddSingleton<IWavelengthMeterDriver, WavelengthMeterDriver>();
@@ -93,6 +90,7 @@ public partial class App : Application
                 services.AddSingleton<IAcquisitionService, AcquisitionService>();
                 services.AddSingleton<ITmsService, TmsUploadService>();
                 services.AddSingleton<ITrendService, TrendService>();
+                services.AddHostedService<DataRetentionService>();
 
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<OverviewViewModel>();

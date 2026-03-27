@@ -43,7 +43,12 @@
                   BorderThickness="0" GridLinesVisibility="Horizontal"
                   HorizontalGridLinesBrush="#334466"
                   RowBackground="#23233D" AlternatingRowBackground="#1B1B2F"
-                  HeadersVisibility="Column" CanUserResizeRows="False">
+                  HeadersVisibility="Column" CanUserResizeRows="False"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling"
+                  ScrollViewer.CanContentScroll="True"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="True">
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#1B1B2F"/>

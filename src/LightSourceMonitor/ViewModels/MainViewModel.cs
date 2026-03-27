@@ -45,6 +45,8 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
+            var oldPage = CurrentPage;
+
             CurrentPage = index switch
             {
                 0 => _services.GetService(typeof(OverviewViewModel)),
@@ -53,6 +55,8 @@ public partial class MainViewModel : ObservableObject
                 3 => _services.GetService(typeof(SettingsViewModel)),
                 _ => CurrentPage
             };
+
+            (oldPage as IDisposable)?.Dispose();
         }
         catch (Exception ex)
         {

@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Drivers;
 using LightSourceMonitor.Helpers;
@@ -14,7 +13,6 @@ public class AcquisitionService : IAcquisitionService
 {
     private readonly IServiceProvider _services;
     private readonly ILogger<AcquisitionService> _logger;
-    private readonly Channel<MeasurementRecord> _channel;
     private readonly IAlarmService _alarmService;
     private readonly IPdArrayDriver _pdDriver;
     private readonly IWavelengthMeterDriver _wmDriver;
@@ -33,14 +31,12 @@ public class AcquisitionService : IAcquisitionService
     public AcquisitionService(
         IServiceProvider services,
         ILogger<AcquisitionService> logger,
-        Channel<MeasurementRecord> channel,
         IAlarmService alarmService,
         IPdArrayDriver pdDriver,
         IWavelengthMeterDriver wmDriver)
     {
         _services = services;
         _logger = logger;
-        _channel = channel;
         _alarmService = alarmService;
         _pdDriver = pdDriver;
         _wmDriver = wmDriver;
@@ -188,15 +184,6 @@ public class AcquisitionService : IAcquisitionService
 
                 foreach (var kvp in batch)
                 {
-                    try
-                    {
-                        await _channel.Writer.WriteAsync(kvp.Value, ct);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to write to channel");
-                    }
-
                     try
                     {
                         var ch = channels.First(c => c.Id == kvp.Key);

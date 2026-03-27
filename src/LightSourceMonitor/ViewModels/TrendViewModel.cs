@@ -145,6 +145,10 @@ public partial class TrendViewModel : ObservableObject
                 colorIdx++;
             }
 
+            foreach (var s in Series)
+                if (s is IDisposable d) d.Dispose();
+            Series.Clear();
+
             Series = newSeries;
             DataPointCount = totalPoints;
             StatusText = totalPoints > 0

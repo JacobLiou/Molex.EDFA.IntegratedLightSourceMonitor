@@ -50,7 +50,15 @@
             </UniformGrid>
 
             <!-- Device Groups -->
-            <ItemsControl ItemsSource="{Binding DeviceGroups}">
+            <ItemsControl ItemsSource="{Binding DeviceGroups}"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         ScrollViewer.CanContentScroll="True">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:DeviceGroupViewModel}">
                         <Border Background="#23233D" CornerRadius="8" Margin="0,0,0,12" Padding="16">
@@ -159,7 +167,15 @@
                             <TextBlock Text="查看全部 >" Foreground="#448AFF" FontWeight="SemiBold"/>
                         </Button>
                     </DockPanel>
-                    <ItemsControl ItemsSource="{Binding RecentAlarms}" MaxHeight="120">
+                    <ItemsControl ItemsSource="{Binding RecentAlarms}" MaxHeight="120"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.CanContentScroll="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:AlarmItemViewModel}">
                                 <Border Margin="0,0,0,4" Padding="8,6" CornerRadius="4" Background="#1B1B2F">

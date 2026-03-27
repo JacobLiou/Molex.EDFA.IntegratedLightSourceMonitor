@@ -55,8 +55,9 @@ public partial class DeviceGroupViewModel : ObservableObject
     public ObservableCollection<ChannelCardViewModel> Channels { get; } = new();
 }
 
-public partial class OverviewViewModel : ObservableObject
+public partial class OverviewViewModel : ObservableObject, IDisposable
 {
+    private bool _disposed;
     private readonly IServiceProvider _services;
     private readonly IAcquisitionService _acquisitionService;
     private readonly IAlarmService _alarmService;
@@ -185,6 +186,14 @@ public partial class OverviewViewModel : ObservableObject
         NormalCount = normal;
         WarningCount = warning;
         OfflineCount = 0;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _acquisitionService.DataAcquired -= OnDataAcquired;
+        _alarmService.AlarmRaised -= OnAlarmRaised;
     }
 }
 
