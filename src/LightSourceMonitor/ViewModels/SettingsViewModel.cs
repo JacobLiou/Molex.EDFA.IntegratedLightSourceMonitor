@@ -35,10 +35,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private int _tmsUploadIntervalSec = 300;
 
     [ObservableProperty] private int _samplingIntervalMs = 2000;
-    [ObservableProperty] private int _wmSweepEveryN = 100;
-    [ObservableProperty] private int _dbWriteEveryN = 10;
+    [ObservableProperty] private int _wmSweepEveryN = 5;
+    [ObservableProperty] private int _dbWriteEveryN = 1;
 
     [ObservableProperty] private string _statusMessage = "";
+    [ObservableProperty] private string _acqParamsStatus = "";
     [ObservableProperty] private string _driverMode = "";
     [ObservableProperty] private string _pdDriverStatus = "";
     [ObservableProperty] private string _wmDriverStatus = "";
@@ -91,8 +92,11 @@ public partial class SettingsViewModel : ObservableObject
             PdDriverStatus = pdDriver.IsOpen ? $"已连接 — {pdDriver.DeviceSN}" : "未连接";
             WmDriverStatus = wmDriver.IsInitialized ? "已初始化" : "未初始化";
 
-            var acq = _services.GetRequiredService<IAcquisitionService>();
+            var acq = (AcquisitionService)_services.GetRequiredService<IAcquisitionService>();
             IsAcquisitionRunning = acq.IsRunning;
+            SamplingIntervalMs = acq.SamplingIntervalMs;
+            WmSweepEveryN = acq.WmSweepEveryN;
+            DbWriteEveryN = acq.DbWriteEveryN;
         }
         catch (Exception ex)
         {
@@ -161,5 +165,26 @@ public partial class SettingsViewModel : ObservableObject
         {
             StatusMessage = "连接失败: " + ex.Message;
         }
+    }
+
+    [RelayCommand]
+    private Task ApplyAcquisitionParams()
+    {
+        try
+        {
+            var acq = (AcquisitionService)_services.GetRequiredService<IAcquisitionService>();
+            acq.SamplingIntervalMs = SamplingIntervalMs;
+            acq.WmSweepEveryN = WmSweepEveryN;
+            acq.DbWriteEveryN = DbWriteEveryN;
+            AcqParamsStatus = $"已应用 — 间隔{SamplingIntervalMs}ms, WM每{WmSweepEveryN}次, DB每{DbWriteEveryN}次";
+            _logger.LogInformation("Acquisition params updated: interval={Interval}ms, wmEvery={WmN}, dbEvery={DbN}",
+                SamplingIntervalMs, WmSweepEveryN, DbWriteEveryN);
+        }
+        catch (Exception ex)
+        {
+            AcqParamsStatus = "应用失败: " + ex.Message;
+            _logger.LogError(ex, "Failed to apply acquisition params");
+        }
+        return Task.CompletedTask;
     }
 }

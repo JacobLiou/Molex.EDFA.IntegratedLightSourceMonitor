@@ -145,6 +145,56 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- Acquisition Parameters Tab -->
+            <TabItem Header="采集参数">
+                <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,12,0,0">
+                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+                        <TextBlock Text="数据采集参数" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Text="调整采集频率和数据存储策略，修改后点击「应用」即时生效" Foreground="#9898B0" Margin="0,0,0,16"/>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="采集间隔 (ms):" Foreground="#9898B0" VerticalAlignment="Center"/>
+                                <TextBlock Text="每次PD功率采集的时间间隔" Foreground="#55556A" FontSize="11"/>
+                            </StackPanel>
+                            <hc:NumericUpDown Grid.Column="1" Value="{Binding SamplingIntervalMs}" 
+                                              Minimum="500" Maximum="60000" Increment="100" Width="160" HorizontalAlignment="Left"
+                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,12"/>
+
+                            <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                                <TextBlock Text="波长计扫描频率 (每N次):" Foreground="#9898B0" VerticalAlignment="Center"/>
+                                <TextBlock Text="每N次PD采集执行一次WM扫描" Foreground="#55556A" FontSize="11"/>
+                            </StackPanel>
+                            <hc:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding WmSweepEveryN}" 
+                                              Minimum="1" Maximum="1000" Increment="1" Width="160" HorizontalAlignment="Left"
+                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,12"/>
+
+                            <StackPanel Grid.Row="2" Margin="0,0,0,12">
+                                <TextBlock Text="数据库写入频率 (每N次):" Foreground="#9898B0" VerticalAlignment="Center"/>
+                                <TextBlock Text="每N次采集写入一次数据库" Foreground="#55556A" FontSize="11"/>
+                            </StackPanel>
+                            <hc:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding DbWriteEveryN}" 
+                                              Minimum="1" Maximum="100" Increment="1" Width="160" HorizontalAlignment="Left"
+                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,12"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="应用采集参数" Command="{Binding ApplyAcquisitionParamsCommand}"
+                                    Style="{StaticResource ButtonPrimary}" HorizontalAlignment="Left" Padding="16,6"/>
+                            <TextBlock Text="{Binding AcqParamsStatus}" Foreground="#00E676" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </TabItem>
+
             <!-- Alarm Thresholds Tab -->
             <TabItem Header="告警阈值">
                 <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,12,0,0">
