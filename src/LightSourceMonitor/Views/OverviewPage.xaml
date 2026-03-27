@@ -61,7 +61,19 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:DeviceGroupViewModel}">
-                        <Border Background="#23233D" CornerRadius="8" Margin="0,0,0,12" Padding="16">
+                        <Border CornerRadius="8" Margin="0,0,0,12" Padding="16">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#23233D"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                            <Setter Property="BorderBrush" Value="#616161"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <StackPanel>
                                 <!-- Device Header -->
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -101,7 +113,12 @@
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="#1B1B2F"/>
                                                         <Setter Property="BorderBrush" Value="#334466"/>
+                                                        <Setter Property="Opacity" Value="1"/>
                                                         <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                                <Setter Property="Opacity" Value="0.45"/>
+                                                                <Setter Property="BorderBrush" Value="#444455"/>
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding StatusColor}" Value="#FF1744">
                                                                 <Setter Property="BorderBrush" Value="#FF1744"/>
                                                                 <Setter Property="BorderThickness" Value="2"/>
@@ -140,9 +157,19 @@
                                                                    FontSize="13"/>
                                                     </StackPanel>
                                                     <!-- Current value -->
-                                                    <TextBlock Text="{Binding CurrentValue, StringFormat='{}{0:F2}'}"
-                                                               FontFamily="Consolas" FontSize="22" FontWeight="Bold"
-                                                               Foreground="#E8E8F0"/>
+                                                    <TextBlock Text="{Binding DisplayValue}"
+                                                               FontFamily="Consolas" FontSize="22" FontWeight="Bold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#E8E8F0"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                                        <Setter Property="Foreground" Value="#55556A"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="13"
                                                                Margin="0,2,0,0"/>
                                                 </StackPanel>

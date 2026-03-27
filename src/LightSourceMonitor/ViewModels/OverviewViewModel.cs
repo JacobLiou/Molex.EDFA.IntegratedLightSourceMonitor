@@ -19,18 +19,29 @@ public partial class ChannelCardViewModel : ObservableObject
     [ObservableProperty] private string _deviceSn = "";
     [ObservableProperty] private double _currentValue;
     [ObservableProperty] private string _unit = "dBm";
-    [ObservableProperty] private string _statusColor = "#00E676";
+    [ObservableProperty] private string _statusColor = "#616161";
     [ObservableProperty] private double _specValue;
     [ObservableProperty] private double _delta;
     [ObservableProperty] private double _maxValue = double.MinValue;
     [ObservableProperty] private double _minValue = double.MaxValue;
     [ObservableProperty] private string _lastUpdate = "--";
     [ObservableProperty] private double _wavelength;
+    [ObservableProperty] private bool _isOnline = false;
+    [ObservableProperty] private string _displayValue = "---";
+
+    public void SetOffline()
+    {
+        IsOnline = false;
+        StatusColor = "#616161";
+        DisplayValue = "---";
+    }
 
     public void UpdateWithMeasurement(double power, double wavelength, double alarmDelta)
     {
+        IsOnline = true;
         CurrentValue = power;
         Wavelength = wavelength;
+        DisplayValue = power.ToString("F2");
 
         if (power > MaxValue) MaxValue = power;
         if (power < MinValue) MinValue = power;
@@ -78,6 +89,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _alarmService = alarmService;
 
         _acquisitionService.DataAcquired += OnDataAcquired;
+        _acquisitionService.PdConnectionChanged += OnPdConnectionChanged;
         _alarmService.AlarmRaised += OnAlarmRaised;
 
         LoadChannelsAsync().SafeFireAndForget("OverviewViewModel.LoadChannels");
@@ -104,7 +116,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 {
                     DeviceName = $"PD Array ({g.Key})",
                     DeviceSn = g.Key,
-                    IsOnline = true
+                    IsOnline = _acquisitionService.IsPdConnected
                 };
 
                 foreach (var ch in g)
@@ -124,6 +136,23 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 DeviceGroups.Add(group);
             }
 
+            RefreshKpi();
+        });
+    }
+
+    private void OnPdConnectionChanged(bool connected)
+    {
+        AsyncHelper.SafeDispatcherInvoke(() =>
+        {
+            foreach (var group in DeviceGroups)
+            {
+                group.IsOnline = connected;
+                if (!connected)
+                {
+                    foreach (var channel in group.Channels)
+                        channel.SetOffline();
+                }
+            }
             RefreshKpi();
         });
     }
@@ -172,20 +201,21 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
 
     public void RefreshKpi()
     {
-        int total = 0, normal = 0, warning = 0;
+        int total = 0, normal = 0, warning = 0, offline = 0;
         foreach (var group in DeviceGroups)
         {
             foreach (var ch in group.Channels)
             {
                 total++;
-                if (ch.StatusColor == "#00E676") normal++;
+                if (!ch.IsOnline) offline++;
+                else if (ch.StatusColor == "#00E676") normal++;
                 else warning++;
             }
         }
         TotalChannels = total;
         NormalCount = normal;
         WarningCount = warning;
-        OfflineCount = 0;
+        OfflineCount = offline;
     }
 
     public void Dispose()
@@ -193,6 +223,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _acquisitionService.DataAcquired -= OnDataAcquired;
+        _acquisitionService.PdConnectionChanged -= OnPdConnectionChanged;
         _alarmService.AlarmRaised -= OnAlarmRaised;
     }
 }

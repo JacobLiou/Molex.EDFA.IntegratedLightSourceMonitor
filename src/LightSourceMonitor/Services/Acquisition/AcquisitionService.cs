@@ -22,9 +22,13 @@ public class AcquisitionService : IAcquisitionService
     private Task? _runningTask;
     private int _sampleCount;
     private int _consecutiveErrors;
+    private int _reconnectCounter;
+    private bool _pdConnected;
 
     public bool IsRunning { get; private set; }
+    public bool IsPdConnected => _pdConnected;
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
+    public event Action<bool>? PdConnectionChanged;
 
     public int SamplingIntervalMs { get; set; } = 2000;
     public int WmSweepEveryN { get; set; } = 5;
@@ -50,34 +54,45 @@ public class AcquisitionService : IAcquisitionService
     {
         if (IsRunning) return Task.CompletedTask;
 
-        try
+        var pdOpenArg = string.IsNullOrWhiteSpace(_driverSettings.PdOpenArgument)
+            ? "SIM"
+            : _driverSettings.PdOpenArgument;
+
+        if (!_pdDriver.IsOpen)
         {
-            if (!_pdDriver.IsOpen)
+            try
             {
-                var pdOpenArg = string.IsNullOrWhiteSpace(_driverSettings.PdOpenArgument)
-                    ? "SIM"
-                    : _driverSettings.PdOpenArgument;
-                _pdDriver.Open(pdOpenArg);
-                _pdDriver.Initialize();
+                if (_pdDriver.Open(pdOpenArg))
+                {
+                    _pdDriver.Initialize();
+                    _pdConnected = true;
+                    _logger.LogInformation("PD driver opened: {SN}", _pdDriver.DeviceSN);
+                }
+                else
+                {
+                    _pdConnected = false;
+                    _logger.LogWarning("PD device not found ({Arg}), starting in offline mode", pdOpenArg);
+                }
+            }
+            catch (Exception ex)
+            {
+                _pdConnected = false;
+                _logger.LogError(ex, "PD driver initialization failed, starting in offline mode");
             }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Failed to initialize PD driver");
-            throw;
+            _pdConnected = true;
         }
 
         try
         {
             if (!_wmDriver.IsInitialized)
-            {
                 _wmDriver.Init(_driverSettings.WmConfigXmlPath ?? string.Empty);
-            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize WM driver");
-            throw;
+            _logger.LogWarning(ex, "WM driver initialization failed");
         }
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -137,7 +152,58 @@ public class AcquisitionService : IAcquisitionService
                     continue;
                 }
 
+                // ── PD 连接检测 & 自动重连 ────────────────────────────
+                if (!_pdDriver.IsOpen)
+                {
+                    _reconnectCounter++;
+                    if (_pdConnected)
+                    {
+                        _pdConnected = false;
+                        PdConnectionChanged?.Invoke(false);
+                        _logger.LogWarning("PD driver disconnected");
+                    }
+
+                    // 每 30 个周期尝试一次重连
+                    if (_reconnectCounter % 30 == 0)
+                    {
+                        var arg = string.IsNullOrWhiteSpace(_driverSettings.PdOpenArgument) ? "SIM" : _driverSettings.PdOpenArgument;
+                        try
+                        {
+                            if (_pdDriver.Open(arg))
+                            {
+                                _pdDriver.Initialize();
+                                _pdConnected = true;
+                                PdConnectionChanged?.Invoke(true);
+                                _logger.LogInformation("PD driver reconnected: {SN}", _pdDriver.DeviceSN);
+                            }
+                        }
+                        catch (Exception rex)
+                        {
+                            _logger.LogDebug(rex, "PD reconnect attempt failed");
+                        }
+                    }
+
+                    // 离线时不产生假数据，等下一个周期
+                    await Task.Delay(SamplingIntervalMs, ct);
+                    continue;
+                }
+
+                // PD 刚重连上
+                if (!_pdConnected)
+                {
+                    _pdConnected = true;
+                    _reconnectCounter = 0;
+                    PdConnectionChanged?.Invoke(true);
+                }
+
                 var powers = _pdDriver.GetActualPower(channels.Count);
+                if (powers == null)
+                {
+                    _logger.LogWarning("GetActualPower returned null despite driver being open");
+                    await Task.Delay(SamplingIntervalMs, ct);
+                    continue;
+                }
+
                 bool doWmSweep = (_sampleCount % WmSweepEveryN == 0);
 
                 var batch = new Dictionary<int, MeasurementRecord>();
@@ -145,7 +211,7 @@ public class AcquisitionService : IAcquisitionService
                 for (int i = 0; i < channels.Count; i++)
                 {
                     var ch = channels[i];
-                    double power = powers != null && i < powers.Length ? powers[i] : 0;
+                    double power = i < powers.Length ? powers[i] : 0;
                     double wavelength = ch.SpecWavelength;
 
                     if (doWmSweep)
