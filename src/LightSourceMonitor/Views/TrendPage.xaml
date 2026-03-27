@@ -1,0 +1,39 @@
+<UserControl x:Class="LightSourceMonitor.Views.TrendPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="https://handyorg.github.io/handycontrol"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <Border Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+            <WrapPanel>
+                <TextBlock Text="时间范围:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding TimeRangeOptions}" SelectedItem="{Binding SelectedTimeRange}"
+                          Width="140" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}"/>
+                
+                <TextBlock Text="类型:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <RadioButton Content="功率" IsChecked="{Binding ShowPower}" Foreground="#E8E8F0" Margin="0,0,8,0"/>
+                <RadioButton Content="波长" IsChecked="{Binding ShowWavelength}" Foreground="#E8E8F0" Margin="0,0,16,0"/>
+
+                <Button Content="导出 CSV" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource ButtonDefault}" Padding="12,4"/>
+                <Button Content="导出 PNG" Command="{Binding ExportPngCommand}"
+                        Style="{StaticResource ButtonDefault}" Padding="12,4"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- Chart -->
+        <Border Grid.Row="1" Background="#23233D" CornerRadius="8" Padding="12">
+            <lvc:CartesianChart Series="{Binding Series}"
+                                XAxes="{Binding XAxes}"
+                                YAxes="{Binding YAxes}"
+                                ZoomMode="X"
+                                TooltipPosition="Top"/>
+        </Border>
+    </Grid>
+</UserControl>

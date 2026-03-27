@@ -1,0 +1,147 @@
+<hc:Window x:Class="LightSourceMonitor.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        xmlns:vm="clr-namespace:LightSourceMonitor.ViewModels"
+        xmlns:views="clr-namespace:LightSourceMonitor.Views"
+        Title="集成光源监控系统" 
+        Height="800" Width="1400"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        Background="#151525"
+        NonClientAreaBackground="#151525"
+        NonClientAreaForeground="#E8E8F0">
+    
+    <hc:Window.Resources>
+        <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
+            <views:OverviewPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TrendViewModel}">
+            <views:TrendPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AlarmViewModel}">
+            <views:AlarmPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsPage/>
+        </DataTemplate>
+    </hc:Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="60"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top Status Bar -->
+        <Border Grid.ColumnSpan="2" Background="#1B1B2F" BorderBrush="#334466" BorderThickness="0,0,0,1">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo + Title -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="12" Height="12" Fill="#448AFF" Margin="0,0,10,0"/>
+                    <TextBlock Text="集成光源监控系统" FontSize="16" FontWeight="SemiBold" 
+                               Foreground="#E8E8F0" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Status Info -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock Text="运行: " Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding UptimeText}" Foreground="#E8E8F0" FontFamily="Consolas" 
+                               VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                    <TextBlock Text="最后采集: " Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding LastAcquisitionTime}" Foreground="#E8E8F0" FontFamily="Consolas"
+                               VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                    <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{Binding GlobalStatusColor}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding GlobalStatus}" Value="正常">
+                                        <Setter Property="Fill" Value="#00E676"/>
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard RepeatBehavior="Forever">
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                     From="0.6" To="1.0" Duration="0:0:1"
+                                                                     AutoReverse="True"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding GlobalStatus}" Value="告警">
+                                        <Setter Property="Fill" Value="#FF1744"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding GlobalStatus}" Foreground="#E8E8F0" VerticalAlignment="Center"
+                               FontWeight="SemiBold"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Left Navigation -->
+        <Border Grid.Row="1" Background="#1B1B2F" BorderBrush="#334466" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Bottom" Text="v1.0.0" Foreground="#55556A" FontSize="9"
+                           HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <ListBox SelectedIndex="{Binding SelectedNavIndex, Mode=TwoWay}"
+                         Background="Transparent" BorderThickness="0" Margin="0,8,0,0">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Padding="0,12" Cursor="Hand"
+                                                Background="Transparent" CornerRadius="4" Margin="4,2">
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock x:Name="Icon" HorizontalAlignment="Center"
+                                                           FontSize="20" Foreground="#9898B0"
+                                                           Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                                <TextBlock x:Name="Label" HorizontalAlignment="Center"
+                                                           FontSize="9" Foreground="#9898B0" Margin="0,4,0,0"
+                                                           Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#2D2D4A"/>
+                                                <Setter TargetName="Icon" Property="Foreground" Value="#448AFF"/>
+                                                <Setter TargetName="Label" Property="Foreground" Value="#448AFF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#23233D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBoxItem Content="总览" Tag="📊"/>
+                    <ListBoxItem Content="趋势" Tag="📈"/>
+                    <ListBoxItem Content="告警" Tag="🔔"/>
+                    <ListBoxItem Content="设置" Tag="⚙"/>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Content Area -->
+        <Border Grid.Row="1" Grid.Column="1" Background="#151525">
+            <ContentControl Content="{Binding CurrentPage}" Margin="16"/>
+        </Border>
+    </Grid>
+</hc:Window>
