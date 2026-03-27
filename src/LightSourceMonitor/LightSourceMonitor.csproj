@@ -18,6 +18,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Native\libusbK.dll">
+      <TargetPath>libusbK.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Native\UDL2_Server.dll">
+      <TargetPath>UDL2_Server.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="HandyControl" Version="3.5.1" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc6.1" />

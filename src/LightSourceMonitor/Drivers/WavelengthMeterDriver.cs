@@ -5,6 +5,9 @@ namespace LightSourceMonitor.Drivers;
 
 public class WavelengthMeterDriver : IWavelengthMeterDriver
 {
+    private static readonly Guid EngineClsid = new("25500971-ceca-4041-b81c-4b500df01c31");
+    private static readonly Guid WmClsid = new("3873e640-bf69-4ceb-9a1e-0d9585e4dd17");
+
     private readonly ILogger<WavelengthMeterDriver> _logger;
     private dynamic? _engine;
     private dynamic? _wm;
@@ -21,8 +24,8 @@ public class WavelengthMeterDriver : IWavelengthMeterDriver
     {
         try
         {
-            var engineType = Type.GetTypeFromProgID("UDL2_Server.UDL2_Engine");
-            var wmType = Type.GetTypeFromProgID("UDL2_Server.UDL2_WM");
+            var engineType = ResolveComType("UDL2_Server.UDL2_Engine", EngineClsid);
+            var wmType = ResolveComType("UDL2_Server.UDL2_WM", WmClsid);
 
             if (engineType == null || wmType == null)
             {
@@ -159,4 +162,16 @@ public class WavelengthMeterDriver : IWavelengthMeterDriver
     }
 
     ~WavelengthMeterDriver() => Dispose();
+
+    private Type? ResolveComType(string progId, Guid clsid)
+    {
+        var type = Type.GetTypeFromProgID(progId);
+        if (type != null)
+        {
+            return type;
+        }
+
+        _logger.LogWarning("COM ProgID {ProgId} not found, fallback to CLSID {Clsid}", progId, clsid);
+        return Type.GetTypeFromCLSID(clsid, throwOnError: false);
+    }
 }
