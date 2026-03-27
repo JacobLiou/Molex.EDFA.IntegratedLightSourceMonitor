@@ -1,7 +1,10 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
+using LightSourceMonitor.Drivers;
 using LightSourceMonitor.Models;
+using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Email;
 using LightSourceMonitor.Services.Tms;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +39,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private int _dbWriteEveryN = 10;
 
     [ObservableProperty] private string _statusMessage = "";
+    [ObservableProperty] private string _driverMode = "";
+    [ObservableProperty] private string _pdDriverStatus = "";
+    [ObservableProperty] private string _wmDriverStatus = "";
+    [ObservableProperty] private bool _isAcquisitionRunning;
+
+    public ObservableCollection<LaserChannel> Channels { get; } = new();
 
     public SettingsViewModel(IServiceProvider services, IEmailService emailService,
                              ITmsService tmsService, ILogger<SettingsViewModel> logger)
@@ -71,6 +80,19 @@ public partial class SettingsViewModel : ObservableObject
                 TmsApiKey = tms.ApiKey;
                 TmsUploadIntervalSec = tms.UploadIntervalSec;
             }
+
+            var channels = await db.LaserChannels.OrderBy(c => c.ChannelIndex).ToListAsync();
+            Channels.Clear();
+            foreach (var ch in channels) Channels.Add(ch);
+
+            var pdDriver = _services.GetRequiredService<IPdArrayDriver>();
+            var wmDriver = _services.GetRequiredService<IWavelengthMeterDriver>();
+            DriverMode = pdDriver is SimulatedPdArrayDriver ? "模拟模式 (Simulated)" : "硬件模式 (Hardware)";
+            PdDriverStatus = pdDriver.IsOpen ? $"已连接 — {pdDriver.DeviceSN}" : "未连接";
+            WmDriverStatus = wmDriver.IsInitialized ? "已初始化" : "未初始化";
+
+            var acq = _services.GetRequiredService<IAcquisitionService>();
+            IsAcquisitionRunning = acq.IsRunning;
         }
         catch (Exception ex)
         {
