@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
@@ -158,6 +159,13 @@ public partial class OverviewViewModel : ObservableObject
             while (RecentAlarms.Count > 20)
                 RecentAlarms.RemoveAt(RecentAlarms.Count - 1);
         });
+    }
+
+    [RelayCommand]
+    private void NavigateToAlarms()
+    {
+        var mainVm = _services.GetRequiredService<MainViewModel>();
+        mainVm.SelectedNavIndex = 2;
     }
 
     public void RefreshKpi()

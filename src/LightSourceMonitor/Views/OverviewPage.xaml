@@ -153,8 +153,11 @@
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
                         <TextBlock Text="最新告警" FontSize="17" FontWeight="SemiBold" Foreground="#E8E8F0"/>
-                        <TextBlock Text="查看全部 >" Foreground="#448AFF" Cursor="Hand"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Button Command="{Binding NavigateToAlarmsCommand}"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Cursor="Hand" Background="Transparent" BorderThickness="0" Padding="0">
+                            <TextBlock Text="查看全部 >" Foreground="#448AFF" FontWeight="SemiBold"/>
+                        </Button>
                     </DockPanel>
                     <ItemsControl ItemsSource="{Binding RecentAlarms}" MaxHeight="120">
                         <ItemsControl.ItemTemplate>
