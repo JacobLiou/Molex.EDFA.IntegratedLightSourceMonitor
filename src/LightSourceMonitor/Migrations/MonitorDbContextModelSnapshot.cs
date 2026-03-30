@@ -97,46 +97,6 @@ namespace LightSourceMonitor.Migrations
                     b.ToTable("EmailConfigs");
                 });
 
-            modelBuilder.Entity("LightSourceMonitor.Models.LaserChannel", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<double>("AlarmDelta")
-                        .HasColumnType("REAL");
-
-                    b.Property<int>("ChannelIndex")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ChannelName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeviceSN")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<double>("SpecPowerMax")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("SpecPowerMin")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("SpecWavelength")
-                        .HasColumnType("REAL");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeviceSN", "ChannelIndex")
-                        .IsUnique();
-
-                    b.ToTable("LaserChannels");
-                });
-
             modelBuilder.Entity("LightSourceMonitor.Models.MeasurementRecord", b =>
                 {
                     b.Property<long>("Id")
@@ -192,34 +152,6 @@ namespace LightSourceMonitor.Migrations
                     b.ToTable("TmsConfigs");
                 });
 
-            modelBuilder.Entity("LightSourceMonitor.Models.AlarmEvent", b =>
-                {
-                    b.HasOne("LightSourceMonitor.Models.LaserChannel", "Channel")
-                        .WithMany("AlarmEvents")
-                        .HasForeignKey("ChannelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Channel");
-                });
-
-            modelBuilder.Entity("LightSourceMonitor.Models.MeasurementRecord", b =>
-                {
-                    b.HasOne("LightSourceMonitor.Models.LaserChannel", "Channel")
-                        .WithMany("Measurements")
-                        .HasForeignKey("ChannelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Channel");
-                });
-
-            modelBuilder.Entity("LightSourceMonitor.Models.LaserChannel", b =>
-                {
-                    b.Navigation("AlarmEvents");
-
-                    b.Navigation("Measurements");
-                });
 #pragma warning restore 612, 618
         }
     }

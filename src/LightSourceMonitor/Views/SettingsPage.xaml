@@ -100,7 +100,6 @@
                                         </Style>
                                     </DataGrid.ColumnHeaderStyle>
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="100"/>
                                         <DataGridTextColumn Header="设备SN" Binding="{Binding DeviceSN}" Width="120">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
@@ -108,6 +107,7 @@
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
+                                        <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="100"/>
                                         <DataGridTextColumn Header="波长 (nm)" Binding="{Binding SpecWavelength, StringFormat='{}{0:F1}'}" Width="90">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">

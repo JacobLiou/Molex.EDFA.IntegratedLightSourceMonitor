@@ -36,9 +36,9 @@ public class AcquisitionService : IAcquisitionService
     public event Action<bool>? PdConnectionChanged;
     public event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;
 
-    public int SamplingIntervalMs { get; set; } = 2000;
-    public int WmSweepEveryN { get; set; } = 5;
-    public int DbWriteEveryN { get; set; } = 1;
+    public int SamplingIntervalMs { get; set; } = 5000;
+    public int WmSweepEveryN { get; set; } = 10;
+    public int DbWriteEveryN { get; set; } = 10;
 
     public AcquisitionService(
         IServiceProvider services,

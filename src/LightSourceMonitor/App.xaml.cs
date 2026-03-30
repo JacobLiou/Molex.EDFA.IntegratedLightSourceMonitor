@@ -143,6 +143,14 @@ public partial class App : Application
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
 
+        // Apply any pending EF Core migrations (creates / upgrades the DB schema)
+        using (var scope = _host.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            await db.Database.MigrateAsync();
+            Log.Information("Database migrated successfully");
+        }
+
         await _host.StartAsync();
 
         var acq = _host.Services.GetRequiredService<IAcquisitionService>();

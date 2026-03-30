@@ -40,9 +40,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _tmsApiKey = "";
     [ObservableProperty] private int _tmsUploadIntervalSec = 300;
 
-    [ObservableProperty] private int _samplingIntervalMs = 2000;
-    [ObservableProperty] private int _wmSweepEveryN = 5;
-    [ObservableProperty] private int _dbWriteEveryN = 1;
+    [ObservableProperty] private int _samplingIntervalMs = 5000;
+    [ObservableProperty] private int _wmSweepEveryN = 10;
+    [ObservableProperty] private int _dbWriteEveryN = 10;
 
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private string _acqParamsStatus = "";
