@@ -2,15 +2,13 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LightSourceMonitor.Data;
 using LightSourceMonitor.Helpers;
+using LightSourceMonitor.Services.Channels;
 using LightSourceMonitor.Services.Trend;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 
@@ -27,7 +25,7 @@ public partial class TrendViewModel : ObservableObject
     };
 
     private readonly ITrendService _trendService;
-    private readonly IServiceProvider _services;
+    private readonly IChannelCatalog _channelCatalog;
     private readonly ILogger<TrendViewModel> _logger;
     private bool _isLoading;
 
@@ -42,10 +40,10 @@ public partial class TrendViewModel : ObservableObject
     public string[] TimeRangeOptions { get; } =
         { "最近1小时", "最近24小时", "最近7天", "最近30天" };
 
-    public TrendViewModel(ITrendService trendService, IServiceProvider services, ILogger<TrendViewModel> logger)
+    public TrendViewModel(ITrendService trendService, IChannelCatalog channelCatalog, ILogger<TrendViewModel> logger)
     {
         _trendService = trendService;
-        _services = services;
+        _channelCatalog = channelCatalog;
         _logger = logger;
         InitializeAxes();
         LoadDataAsync().SafeFireAndForget("TrendViewModel.InitialLoad");
@@ -113,10 +111,7 @@ public partial class TrendViewModel : ObservableObject
             StatusText = "加载中...";
             var (from, to) = GetTimeRange();
 
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-            var channels = await db.LaserChannels.Where(c => c.IsEnabled)
-                .OrderBy(c => c.ChannelIndex).ToListAsync();
+            var channels = _channelCatalog.GetEnabledChannels();
 
             var newSeries = new ObservableCollection<ISeries>();
             int colorIdx = 0;
@@ -196,10 +191,7 @@ public partial class TrendViewModel : ObservableObject
             if (dialog.ShowDialog() != true) return;
 
             var (from, to) = GetTimeRange();
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-            var channels = await db.LaserChannels.Where(c => c.IsEnabled)
-                .OrderBy(c => c.ChannelIndex).ToListAsync();
+            var channels = _channelCatalog.GetEnabledChannels();
 
             var allRecords = new List<(string chName, Models.MeasurementRecord rec)>();
             foreach (var ch in channels)

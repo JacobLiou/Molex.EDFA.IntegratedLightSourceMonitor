@@ -28,6 +28,4 @@ public class AlarmEvent
     public double SpecValue { get; set; }
     public double Delta { get; set; }
     public bool EmailSent { get; set; }
-
-    public LaserChannel? Channel { get; set; }
 }

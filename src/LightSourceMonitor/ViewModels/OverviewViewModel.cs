@@ -1,12 +1,11 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LightSourceMonitor.Data;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Alarm;
-using Microsoft.EntityFrameworkCore;
+using LightSourceMonitor.Services.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -70,6 +69,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
     private readonly IServiceProvider _services;
+    private readonly IChannelCatalog _channelCatalog;
     private readonly IAcquisitionService _acquisitionService;
     private readonly IAlarmService _alarmService;
     private readonly Dictionary<int, (ChannelCardViewModel card, double alarmDelta)> _channelMap = new();
@@ -82,9 +82,10 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     public ObservableCollection<DeviceGroupViewModel> DeviceGroups { get; } = new();
     public ObservableCollection<AlarmItemViewModel> RecentAlarms { get; } = new();
 
-    public OverviewViewModel(IServiceProvider services, IAcquisitionService acquisitionService, IAlarmService alarmService)
+    public OverviewViewModel(IServiceProvider services, IChannelCatalog channelCatalog, IAcquisitionService acquisitionService, IAlarmService alarmService)
     {
         _services = services;
+        _channelCatalog = channelCatalog;
         _acquisitionService = acquisitionService;
         _alarmService = alarmService;
 
@@ -98,12 +99,8 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
 
     private async Task LoadChannelsAsync()
     {
-        using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-        var channels = await db.LaserChannels
-            .Where(c => c.IsEnabled)
-            .OrderBy(c => c.ChannelIndex)
-            .ToListAsync();
+        await Task.Yield();
+        var channels = _channelCatalog.GetEnabledChannels();
 
         AsyncHelper.SafeDispatcherInvoke(() =>
         {

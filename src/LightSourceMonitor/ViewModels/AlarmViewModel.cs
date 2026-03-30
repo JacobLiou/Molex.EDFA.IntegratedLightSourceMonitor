@@ -5,6 +5,7 @@ using LightSourceMonitor.Data;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Alarm;
+using LightSourceMonitor.Services.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -28,6 +29,7 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
 {
     private readonly IServiceProvider _services;
     private readonly IAlarmService _alarmService;
+    private readonly IChannelCatalog _channelCatalog;
     private bool _disposed;
     private Dictionary<int, string> _channelNames = new();
 
@@ -41,10 +43,11 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
     public string[] LevelOptions { get; } = { "全部", "严重", "警告" };
     public string[] TimeRangeOptions { get; } = { "最近1小时", "最近24小时", "最近7天", "全部" };
 
-    public AlarmViewModel(IServiceProvider services, IAlarmService alarmService)
+    public AlarmViewModel(IServiceProvider services, IAlarmService alarmService, IChannelCatalog channelCatalog)
     {
         _services = services;
         _alarmService = alarmService;
+        _channelCatalog = channelCatalog;
 
         _alarmService.AlarmRaised += OnAlarmRaised;
         LoadAlarmsAsync().SafeFireAndForget("AlarmViewModel.LoadAlarms");
@@ -58,11 +61,10 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
     {
         try
         {
+            _channelNames = _channelCatalog.GetChannelMap().ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ChannelName);
+
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-
-            var channels = await db.LaserChannels.ToListAsync();
-            _channelNames = channels.ToDictionary(c => c.Id, c => c.ChannelName);
 
             IQueryable<AlarmEvent> query = db.AlarmEvents.AsQueryable();
 

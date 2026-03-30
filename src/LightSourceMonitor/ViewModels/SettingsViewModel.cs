@@ -6,6 +6,7 @@ using LightSourceMonitor.Drivers;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
+using LightSourceMonitor.Services.Channels;
 using LightSourceMonitor.Services.Email;
 using LightSourceMonitor.Services.Tms;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IServiceProvider _services;
     private readonly IEmailService _emailService;
     private readonly ITmsService _tmsService;
+    private readonly IChannelCatalog _channelCatalog;
     private readonly IPdDriverManager _pdDriverManager;
     private readonly DriverSettings _driverSettings;
     private readonly ILogger<SettingsViewModel> _logger;
@@ -52,13 +54,14 @@ public partial class SettingsViewModel : ObservableObject
     public ObservableCollection<LaserChannel> Channels { get; } = new();
 
     public SettingsViewModel(IServiceProvider services, IEmailService emailService,
-                             ITmsService tmsService, IPdDriverManager pdDriverManager,
+                             ITmsService tmsService, IChannelCatalog channelCatalog, IPdDriverManager pdDriverManager,
                              IOptions<DriverSettings> driverOptions,
                              ILogger<SettingsViewModel> logger)
     {
         _services = services;
         _emailService = emailService;
         _tmsService = tmsService;
+        _channelCatalog = channelCatalog;
         _pdDriverManager = pdDriverManager;
         _driverSettings = driverOptions.Value;
         _logger = logger;
@@ -90,7 +93,10 @@ public partial class SettingsViewModel : ObservableObject
                 TmsUploadIntervalSec = tms.UploadIntervalSec;
             }
 
-            var channels = await db.LaserChannels.OrderBy(c => c.ChannelIndex).ToListAsync();
+            var channels = _channelCatalog.GetAllChannels()
+                .OrderBy(c => c.DeviceSN, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(c => c.ChannelIndex)
+                .ToList();
             Channels.Clear();
             foreach (var ch in channels) Channels.Add(ch);
 

@@ -3,6 +3,7 @@ using LightSourceMonitor.Drivers;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Alarm;
+using LightSourceMonitor.Services.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ public class AcquisitionService : IAcquisitionService
     private readonly IServiceProvider _services;
     private readonly ILogger<AcquisitionService> _logger;
     private readonly IAlarmService _alarmService;
+    private readonly IChannelCatalog _channelCatalog;
     private readonly IPdDriverManager _pdDriverManager;
     private readonly IWavelengthMeterDriver _wmDriver;
     private readonly DriverSettings _driverSettings;
@@ -41,6 +43,7 @@ public class AcquisitionService : IAcquisitionService
         IServiceProvider services,
         ILogger<AcquisitionService> logger,
         IAlarmService alarmService,
+        IChannelCatalog channelCatalog,
         IPdDriverManager pdDriverManager,
         IWavelengthMeterDriver wmDriver,
         IOptions<DriverSettings> driverOptions)
@@ -48,6 +51,7 @@ public class AcquisitionService : IAcquisitionService
         _services = services;
         _logger = logger;
         _alarmService = alarmService;
+        _channelCatalog = channelCatalog;
         _pdDriverManager = pdDriverManager;
         _wmDriver = wmDriver;
         _driverSettings = driverOptions.Value;
@@ -125,18 +129,16 @@ public class AcquisitionService : IAcquisitionService
             {
                 var now = DateTime.Now;
 
-                using var scope = _services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-                var channels = await db.LaserChannels
-                    .Where(c => c.IsEnabled)
-                    .OrderBy(c => c.ChannelIndex)
-                    .ToListAsync(ct);
+                var channels = _channelCatalog.GetEnabledChannels();
 
                 if (channels.Count == 0)
                 {
                     await Task.Delay(SamplingIntervalMs, ct);
                     continue;
                 }
+
+                using var scope = _services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
 
                 bool doWmSweep = (_sampleCount % WmSweepEveryN == 0);
                 var batch = new Dictionary<int, MeasurementRecord>();

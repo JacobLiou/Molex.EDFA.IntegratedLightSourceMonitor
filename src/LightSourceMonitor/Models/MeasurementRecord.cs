@@ -11,6 +11,4 @@ public class MeasurementRecord
     public double Power { get; set; }
     public double Wavelength { get; set; }
     public bool IsSyncedToTms { get; set; }
-
-    public LaserChannel? Channel { get; set; }
 }
