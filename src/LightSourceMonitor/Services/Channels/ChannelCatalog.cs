@@ -20,6 +20,13 @@ public class ChannelCatalog : IChannelCatalog
     {
         ArgumentNullException.ThrowIfNull(driverOptions);
 
+        var validation = driverOptions.Value.ValidateConfiguration();
+        if (!validation.IsValid)
+        {
+            throw new InvalidOperationException(
+                $"Driver configuration is invalid: {string.Join("; ", validation.Errors)}");
+        }
+
         var channels = new List<LaserChannel>();
         var usedIds = new HashSet<int>();
 

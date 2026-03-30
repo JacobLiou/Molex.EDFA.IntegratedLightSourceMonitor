@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using LightSourceMonitor.Drivers.Native;
+using LightSourceMonitor.Models;
 using Microsoft.Extensions.Logging;
 
 namespace LightSourceMonitor.Drivers;
@@ -165,6 +166,12 @@ public class PdArrayDriver : IPdArrayDriver
             powers[i] = raw / 100.0;
         }
         return powers;
+    }
+
+    public WbaTelemetrySnapshot? GetWbaTelemetry()
+    {
+        // WBA protocol command is not defined yet in hardware mode.
+        return null;
     }
 
     private bool SetMfgMode()

@@ -38,6 +38,78 @@ public class DriverSettings
             }
         ];
     }
+
+    public DriverSettingsValidationResult ValidateConfiguration()
+    {
+        var result = new DriverSettingsValidationResult();
+        var devices = GetEffectiveDevices();
+
+        if (devices.Count == 0)
+        {
+            result.Errors.Add("Driver.Devices 未配置任何启用设备，且旧版回退配置不可用。");
+            return result;
+        }
+
+        var duplicateDeviceSn = devices
+            .GroupBy(d => d.DeviceSN, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        foreach (var deviceSn in duplicateDeviceSn)
+            result.Errors.Add($"存在重复 DeviceSN: {deviceSn}");
+
+        var duplicateUsbAddress = devices
+            .Where(d => !string.IsNullOrWhiteSpace(d.UsbAddress))
+            .GroupBy(d => d.UsbAddress, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        foreach (var usbAddress in duplicateUsbAddress)
+            result.Errors.Add($"存在重复 UsbAddress: {usbAddress}");
+
+        var totalEnabledChannels = 0;
+
+        foreach (var device in devices)
+        {
+            if (string.IsNullOrWhiteSpace(device.DeviceSN))
+                result.Errors.Add("存在空 DeviceSN 配置。每个设备都必须配置 DeviceSN。");
+
+            if (string.IsNullOrWhiteSpace(device.UsbAddress))
+                result.Errors.Add($"设备 {device.DeviceSN} 的 UsbAddress 为空。");
+
+            var enabledChannels = device.Channels
+                .Where(c => c.IsEnabled)
+                .ToList();
+            totalEnabledChannels += enabledChannels.Count;
+
+            if (device.Channels.Count == 0)
+                result.Warnings.Add($"设备 {device.DeviceSN} 未配置任何 Channels。该设备不会显示任何通道。");
+
+            if (enabledChannels.Count == 0)
+                result.Warnings.Add($"设备 {device.DeviceSN} 没有启用通道。该设备不会参与采集。");
+
+            var duplicateChannelIndex = enabledChannels
+                .GroupBy(c => c.ChannelIndex)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .OrderBy(i => i)
+                .ToList();
+            foreach (var channelIndex in duplicateChannelIndex)
+                result.Errors.Add($"设备 {device.DeviceSN} 存在重复 ChannelIndex: {channelIndex}");
+        }
+
+        if (totalEnabledChannels == 0)
+            result.Errors.Add("所有设备的启用通道数为 0，采集无法启动。");
+
+        return result;
+    }
+}
+
+public class DriverSettingsValidationResult
+{
+    public List<string> Errors { get; } = new();
+    public List<string> Warnings { get; } = new();
+    public bool IsValid => Errors.Count == 0;
 }
 
 public class PdDeviceSettings

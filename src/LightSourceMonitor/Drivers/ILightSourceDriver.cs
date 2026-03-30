@@ -1,3 +1,5 @@
+using LightSourceMonitor.Models;
+
 namespace LightSourceMonitor.Drivers;
 
 public interface IPdArrayDriver : IDisposable
@@ -7,6 +9,7 @@ public interface IPdArrayDriver : IDisposable
     bool Open(string instanceIdSubstring);
     bool Initialize();
     double[]? GetActualPower(int channelCount = 33);
+    WbaTelemetrySnapshot? GetWbaTelemetry();
     void Close();
 }
 

@@ -32,6 +32,7 @@ public class AcquisitionService : IAcquisitionService
     public bool IsPdConnected => _pdConnected;
     public IReadOnlyDictionary<string, bool> PdDeviceStates => _deviceStates;
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
+    public event Action<IReadOnlyDictionary<string, WbaTelemetrySnapshot>>? WbaTelemetryAcquired;
     public event Action<bool>? PdConnectionChanged;
     public event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;
 
@@ -142,6 +143,7 @@ public class AcquisitionService : IAcquisitionService
 
                 bool doWmSweep = (_sampleCount % WmSweepEveryN == 0);
                 var batch = new Dictionary<int, MeasurementRecord>();
+                var wbaBatch = new Dictionary<string, WbaTelemetrySnapshot>(StringComparer.OrdinalIgnoreCase);
 
                 var grouped = channels
                     .GroupBy(c => c.DeviceSN)
@@ -168,6 +170,11 @@ public class AcquisitionService : IAcquisitionService
 
                     _deviceReconnectCounters[deviceSn] = 0;
                     _deviceStates[deviceSn] = true;
+
+                    if (_pdDriverManager.TryReadWbaTelemetry(deviceSn, out var wbaTelemetry) && wbaTelemetry != null)
+                    {
+                        wbaBatch[deviceSn] = wbaTelemetry;
+                    }
 
                     for (int i = 0; i < orderedChannels.Count; i++)
                     {
@@ -239,6 +246,9 @@ public class AcquisitionService : IAcquisitionService
                 }
 
                 DataAcquired.SafeInvoke(batch, nameof(DataAcquired));
+                if (wbaBatch.Count > 0)
+                    WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
+
                 _consecutiveErrors = 0;
             }
             catch (OperationCanceledException) { break; }

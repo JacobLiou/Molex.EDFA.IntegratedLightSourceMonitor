@@ -57,12 +57,22 @@ public partial class ChannelCardViewModel : ObservableObject
     }
 }
 
+public partial class WbaMetricViewModel : ObservableObject
+{
+    [ObservableProperty] private string _name = "";
+    [ObservableProperty] private string _unit = "";
+    [ObservableProperty] private string _displayValue = "---";
+}
+
 public partial class DeviceGroupViewModel : ObservableObject
 {
     [ObservableProperty] private string _deviceName = "";
     [ObservableProperty] private string _deviceSn = "";
     [ObservableProperty] private bool _isOnline;
+    [ObservableProperty] private bool _hasWbaData;
+    [ObservableProperty] private string _wbaLastUpdate = "--";
     public ObservableCollection<ChannelCardViewModel> Channels { get; } = new();
+    public ObservableCollection<WbaMetricViewModel> WbaMetrics { get; } = new();
 }
 
 public partial class OverviewViewModel : ObservableObject, IDisposable
@@ -73,6 +83,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     private readonly IAcquisitionService _acquisitionService;
     private readonly IAlarmService _alarmService;
     private readonly Dictionary<int, (ChannelCardViewModel card, double alarmDelta)> _channelMap = new();
+    private readonly Dictionary<string, DeviceGroupViewModel> _deviceMap = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty] private int _totalChannels;
     [ObservableProperty] private int _normalCount;
@@ -90,6 +101,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _alarmService = alarmService;
 
         _acquisitionService.DataAcquired += OnDataAcquired;
+        _acquisitionService.WbaTelemetryAcquired += OnWbaTelemetryAcquired;
         _acquisitionService.PdConnectionChanged += OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged += OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised += OnAlarmRaised;
@@ -106,6 +118,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         {
             DeviceGroups.Clear();
             _channelMap.Clear();
+            _deviceMap.Clear();
 
             var groups = channels.GroupBy(c => c.DeviceSN);
             foreach (var g in groups)
@@ -116,6 +129,9 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                     DeviceSn = g.Key,
                     IsOnline = _acquisitionService.IsPdConnected
                 };
+
+                foreach (var metric in CreateDefaultWbaMetrics())
+                    group.WbaMetrics.Add(metric);
 
                 foreach (var ch in g)
                 {
@@ -132,6 +148,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 }
 
                 DeviceGroups.Add(group);
+                _deviceMap[group.DeviceSn] = group;
             }
 
             RefreshKpi();
@@ -149,6 +166,8 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 {
                     foreach (var channel in group.Channels)
                         channel.SetOffline();
+
+                    SetWbaOffline(group);
                 }
             }
             RefreshKpi();
@@ -168,6 +187,8 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                     {
                         foreach (var channel in group.Channels)
                             channel.SetOffline();
+
+                        SetWbaOffline(group);
                     }
                 }
             }
@@ -190,6 +211,36 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         });
     }
 
+    private void OnWbaTelemetryAcquired(IReadOnlyDictionary<string, WbaTelemetrySnapshot> snapshots)
+    {
+        AsyncHelper.SafeDispatcherInvoke(() =>
+        {
+            foreach (var kvp in snapshots)
+            {
+                if (!_deviceMap.TryGetValue(kvp.Key, out var group))
+                    continue;
+
+                var telemetry = kvp.Value;
+                if (telemetry.Voltages.Length < 4 || telemetry.Temperatures.Length < 4)
+                    continue;
+
+                group.WbaMetrics[0].DisplayValue = telemetry.Voltages[0].ToString("F3");
+                group.WbaMetrics[1].DisplayValue = telemetry.Voltages[1].ToString("F3");
+                group.WbaMetrics[2].DisplayValue = telemetry.Voltages[2].ToString("F3");
+                group.WbaMetrics[3].DisplayValue = telemetry.Voltages[3].ToString("F3");
+
+                group.WbaMetrics[4].DisplayValue = telemetry.Temperatures[0].ToString("F2");
+                group.WbaMetrics[5].DisplayValue = telemetry.Temperatures[1].ToString("F2");
+                group.WbaMetrics[6].DisplayValue = telemetry.Temperatures[2].ToString("F2");
+                group.WbaMetrics[7].DisplayValue = telemetry.Temperatures[3].ToString("F2");
+
+                group.WbaMetrics[8].DisplayValue = telemetry.AtmospherePressure.ToString("F3");
+                group.WbaLastUpdate = telemetry.Timestamp.ToString("HH:mm:ss");
+                group.HasWbaData = true;
+            }
+        });
+    }
+
     private void OnAlarmRaised(AlarmEvent alarm)
     {
         AsyncHelper.SafeDispatcherInvoke(() =>
@@ -208,6 +259,31 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
             while (RecentAlarms.Count > 20)
                 RecentAlarms.RemoveAt(RecentAlarms.Count - 1);
         });
+    }
+
+    private static List<WbaMetricViewModel> CreateDefaultWbaMetrics()
+    {
+        return
+        [
+            new WbaMetricViewModel { Name = "V1", Unit = "V" },
+            new WbaMetricViewModel { Name = "V2", Unit = "V" },
+            new WbaMetricViewModel { Name = "V3", Unit = "V" },
+            new WbaMetricViewModel { Name = "V4", Unit = "V" },
+            new WbaMetricViewModel { Name = "T1", Unit = "°C" },
+            new WbaMetricViewModel { Name = "T2", Unit = "°C" },
+            new WbaMetricViewModel { Name = "T3", Unit = "°C" },
+            new WbaMetricViewModel { Name = "T4", Unit = "°C" },
+            new WbaMetricViewModel { Name = "P", Unit = "kPa" }
+        ];
+    }
+
+    private static void SetWbaOffline(DeviceGroupViewModel group)
+    {
+        foreach (var metric in group.WbaMetrics)
+            metric.DisplayValue = "---";
+
+        group.HasWbaData = false;
+        group.WbaLastUpdate = "--";
     }
 
     [RelayCommand]
@@ -241,6 +317,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _acquisitionService.DataAcquired -= OnDataAcquired;
+        _acquisitionService.WbaTelemetryAcquired -= OnWbaTelemetryAcquired;
         _acquisitionService.PdConnectionChanged -= OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged -= OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised -= OnAlarmRaised;

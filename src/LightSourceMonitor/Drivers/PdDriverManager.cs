@@ -9,6 +9,7 @@ public interface IPdDriverManager : IDisposable
     bool AnyConnected { get; }
     void ConfigureDevices(IEnumerable<PdDeviceSettings> devices);
     bool TryReadPower(string deviceSn, int channelCount, out double[]? powers);
+    bool TryReadWbaTelemetry(string deviceSn, out WbaTelemetrySnapshot? telemetry);
     bool TryReconnect(string deviceSn);
     void CloseAll();
 }
@@ -75,6 +76,19 @@ public class PdDriverManager : IPdDriverManager
             return false;
         }
 
+        return true;
+    }
+
+    public bool TryReadWbaTelemetry(string deviceSn, out WbaTelemetrySnapshot? telemetry)
+    {
+        telemetry = null;
+        if (!_devices.TryGetValue(deviceSn, out var ctx))
+            return false;
+
+        if (!ctx.Connected && !TryOpenAndInit(ctx))
+            return false;
+
+        telemetry = ctx.Driver.GetWbaTelemetry();
         return true;
     }
 

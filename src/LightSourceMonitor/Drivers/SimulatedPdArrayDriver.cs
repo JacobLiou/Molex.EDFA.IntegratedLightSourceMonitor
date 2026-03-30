@@ -1,3 +1,4 @@
+using LightSourceMonitor.Models;
 using Microsoft.Extensions.Logging;
 
 namespace LightSourceMonitor.Drivers;
@@ -59,6 +60,37 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
         }
 
         return powers;
+    }
+
+    public WbaTelemetrySnapshot? GetWbaTelemetry()
+    {
+        if (!IsOpen || !_initialized) return null;
+
+        double elapsed = (DateTime.UtcNow - _startTime).TotalSeconds;
+        int deviceSeed = Math.Abs(DeviceSN.GetHashCode(StringComparison.OrdinalIgnoreCase)) % 1000;
+
+        var voltages = new double[4];
+        var temperatures = new double[4];
+
+        for (int i = 0; i < 4; i++)
+        {
+            double phase = elapsed / 25.0 + i * 0.6 + deviceSeed * 0.001;
+            voltages[i] = Math.Round(3.2 + i * 0.12 + 0.05 * Math.Sin(phase) + NextGaussian() * 0.01, 3);
+
+            double tempPhase = elapsed / 40.0 + i * 0.8 + deviceSeed * 0.0015;
+            temperatures[i] = Math.Round(31.0 + i * 0.9 + 0.45 * Math.Sin(tempPhase) + NextGaussian() * 0.08, 2);
+        }
+
+        double pressure = Math.Round(101.25 + 0.22 * Math.Sin(elapsed / 55.0 + deviceSeed * 0.0007) + NextGaussian() * 0.03, 3);
+
+        return new WbaTelemetrySnapshot
+        {
+            DeviceSN = DeviceSN,
+            Timestamp = DateTime.Now,
+            Voltages = voltages,
+            Temperatures = temperatures,
+            AtmospherePressure = pressure
+        };
     }
 
     public void Close()

@@ -111,75 +111,119 @@
                                             </DockPanel>
                                         </Expander.Header>
 
-                                        <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
-                                            <ItemsControl ItemsSource="{Binding Channels}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <WrapPanel/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:ChannelCardViewModel}">
-                                                        <Border Width="158" Margin="0,0,8,8" Padding="12"
-                                                                CornerRadius="6" Cursor="Hand" BorderThickness="1">
-                                                            <Border.Style>
-                                                                <Style TargetType="Border">
-                                                                    <Setter Property="Background" Value="#23233D"/>
-                                                                    <Setter Property="BorderBrush" Value="#334466"/>
-                                                                    <Setter Property="Opacity" Value="1"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsOnline}" Value="False">
-                                                                            <Setter Property="Opacity" Value="0.45"/>
-                                                                            <Setter Property="BorderBrush" Value="#444455"/>
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding StatusColor}" Value="#FF1744">
-                                                                            <Setter Property="BorderBrush" Value="#FF1744"/>
-                                                                            <Setter Property="BorderThickness" Value="2"/>
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding StatusColor}" Value="#FFAB00">
-                                                                            <Setter Property="BorderBrush" Value="#FFAB00"/>
-                                                                            <Setter Property="BorderThickness" Value="2"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Border.Style>
-                                                            <Border.ToolTip>
-                                                                <StackPanel Margin="4">
-                                                                    <TextBlock FontWeight="SemiBold" Margin="0,0,0,4">
-                                                                        <Run Text="{Binding ChannelName, Mode=OneWay}"/>
+                                        <StackPanel>
+                                            <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
+                                                <ItemsControl ItemsSource="{Binding Channels}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:ChannelCardViewModel}">
+                                                            <Border Width="158" Margin="0,0,8,8" Padding="12"
+                                                                    CornerRadius="6" Cursor="Hand" BorderThickness="1">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#23233D"/>
+                                                                        <Setter Property="BorderBrush" Value="#334466"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                                                <Setter Property="Opacity" Value="0.45"/>
+                                                                                <Setter Property="BorderBrush" Value="#444455"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding StatusColor}" Value="#FF1744">
+                                                                                <Setter Property="BorderBrush" Value="#FF1744"/>
+                                                                                <Setter Property="BorderThickness" Value="2"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding StatusColor}" Value="#FFAB00">
+                                                                                <Setter Property="BorderBrush" Value="#FFAB00"/>
+                                                                                <Setter Property="BorderThickness" Value="2"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <Border.ToolTip>
+                                                                    <StackPanel Margin="4">
+                                                                        <TextBlock FontWeight="SemiBold" Margin="0,0,0,4">
+                                                                            <Run Text="{Binding ChannelName, Mode=OneWay}"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock Text="{Binding SpecValue, StringFormat='Spec: {0:F3}'}"/>
+                                                                        <TextBlock Text="{Binding MaxValue, StringFormat='Max: {0:F3}'}"/>
+                                                                        <TextBlock Text="{Binding MinValue, StringFormat='Min: {0:F3}'}"/>
+                                                                        <TextBlock Text="{Binding Delta, StringFormat='Delta: {0:F3}'}"/>
+                                                                        <TextBlock Text="{Binding LastUpdate, StringFormat='更新: {0}'}"/>
+                                                                    </StackPanel>
+                                                                </Border.ToolTip>
+                                                                <StackPanel>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                                        <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                                                 Fill="{Binding StatusColor}"/>
+                                                                        <TextBlock Text="{Binding ChannelName}" Foreground="#9898B0" FontSize="13"/>
+                                                                    </StackPanel>
+                                                                    <TextBlock Text="{Binding DisplayValue}" FontFamily="Consolas" FontSize="22" FontWeight="Bold">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="#E8E8F0"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                                                        <Setter Property="Foreground" Value="#55556A"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
                                                                     </TextBlock>
-                                                                    <TextBlock Text="{Binding SpecValue, StringFormat='Spec: {0:F3}'}"/>
-                                                                    <TextBlock Text="{Binding MaxValue, StringFormat='Max: {0:F3}'}"/>
-                                                                    <TextBlock Text="{Binding MinValue, StringFormat='Min: {0:F3}'}"/>
-                                                                    <TextBlock Text="{Binding Delta, StringFormat='Delta: {0:F3}'}"/>
-                                                                    <TextBlock Text="{Binding LastUpdate, StringFormat='更新: {0}'}"/>
+                                                                    <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="13" Margin="0,2,0,0"/>
                                                                 </StackPanel>
-                                                            </Border.ToolTip>
-                                                            <StackPanel>
-                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
-                                                                             Fill="{Binding StatusColor}"/>
-                                                                    <TextBlock Text="{Binding ChannelName}" Foreground="#9898B0" FontSize="13"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+
+                                            <StackPanel Margin="0,12,0,0">
+                                                <DockPanel Margin="2,0,2,8">
+                                                    <TextBlock Text="WBA监测" Foreground="#E8E8F0" FontSize="14" FontWeight="SemiBold"/>
+                                                    <TextBlock Foreground="#9898B0" HorizontalAlignment="Right"
+                                                               Text="{Binding WbaLastUpdate, StringFormat=更新时间: {0}}"/>
+                                                </DockPanel>
+
+                                                <ItemsControl ItemsSource="{Binding WbaMetrics}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:WbaMetricViewModel}">
+                                                            <Border Width="110" Margin="0,0,8,8" Padding="10" CornerRadius="6"
+                                                                    Background="#23233D" BorderBrush="#334466" BorderThickness="1">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding Name}" Foreground="#9898B0" FontSize="12"/>
+                                                                    <TextBlock Text="{Binding DisplayValue}" Foreground="#E8E8F0"
+                                                                               FontFamily="Consolas" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/>
+                                                                    <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="12"/>
                                                                 </StackPanel>
-                                                                <TextBlock Text="{Binding DisplayValue}" FontFamily="Consolas" FontSize="22" FontWeight="Bold">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="Foreground" Value="#E8E8F0"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsOnline}" Value="False">
-                                                                                    <Setter Property="Foreground" Value="#55556A"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
-                                                                <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="13" Margin="0,2,0,0"/>
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <TextBlock Text="等待WBA数据" Foreground="#55556A" Margin="4,0,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasWbaData}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </StackPanel>
                                     </Expander>
                                 </Border>
                             </DataTemplate>

@@ -84,6 +84,27 @@ public partial class App : Application
                     ServiceLifetime.Transient);
 
                 var driverSettings = context.Configuration.GetSection("Driver").Get<DriverSettings>() ?? new DriverSettings();
+                var validation = driverSettings.ValidateConfiguration();
+                var effectiveDevices = driverSettings.GetEffectiveDevices();
+                var enabledChannelCount = effectiveDevices.Sum(d => d.Channels.Count(c => c.IsEnabled));
+
+                Log.Information("Driver config loaded: mode={Mode}, devices={DeviceCount}, enabledChannels={ChannelCount}",
+                    driverSettings.Mode,
+                    effectiveDevices.Count,
+                    enabledChannelCount);
+
+                foreach (var warning in validation.Warnings)
+                    Log.Warning("Driver config warning: {Warning}", warning);
+
+                foreach (var error in validation.Errors)
+                    Log.Error("Driver config error: {Error}", error);
+
+                if (!validation.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        "appsettings Driver 配置无效。请修正重复 DeviceSN、重复 ChannelIndex、空 UsbAddress 等错误后再启动。详细信息见日志。");
+                }
+
                 var useSimulated = string.Equals(driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase);
                 if (useSimulated)
                 {
