@@ -11,6 +11,7 @@ using LightSourceMonitor.Services.Tms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace LightSourceMonitor.ViewModels;
 
@@ -19,6 +20,8 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IServiceProvider _services;
     private readonly IEmailService _emailService;
     private readonly ITmsService _tmsService;
+    private readonly IPdDriverManager _pdDriverManager;
+    private readonly DriverSettings _driverSettings;
     private readonly ILogger<SettingsViewModel> _logger;
 
     [ObservableProperty] private string _smtpServer = "";
@@ -49,11 +52,15 @@ public partial class SettingsViewModel : ObservableObject
     public ObservableCollection<LaserChannel> Channels { get; } = new();
 
     public SettingsViewModel(IServiceProvider services, IEmailService emailService,
-                             ITmsService tmsService, ILogger<SettingsViewModel> logger)
+                             ITmsService tmsService, IPdDriverManager pdDriverManager,
+                             IOptions<DriverSettings> driverOptions,
+                             ILogger<SettingsViewModel> logger)
     {
         _services = services;
         _emailService = emailService;
         _tmsService = tmsService;
+        _pdDriverManager = pdDriverManager;
+        _driverSettings = driverOptions.Value;
         _logger = logger;
         LoadSettingsAsync().SafeFireAndForget("SettingsViewModel.LoadSettings");
     }
@@ -87,10 +94,16 @@ public partial class SettingsViewModel : ObservableObject
             Channels.Clear();
             foreach (var ch in channels) Channels.Add(ch);
 
-            var pdDriver = _services.GetRequiredService<IPdArrayDriver>();
             var wmDriver = _services.GetRequiredService<IWavelengthMeterDriver>();
-            DriverMode = pdDriver is SimulatedPdArrayDriver ? "模拟模式 (Simulated)" : "硬件模式 (Hardware)";
-            PdDriverStatus = pdDriver.IsOpen ? $"已连接 — {pdDriver.DeviceSN}" : "未连接";
+            DriverMode = string.Equals(_driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase)
+                ? "模拟模式 (Simulated)"
+                : "硬件模式 (Hardware)";
+
+            var states = _pdDriverManager.ConnectionStates;
+            int connectedCount = states.Count(kvp => kvp.Value);
+            PdDriverStatus = states.Count == 0
+                ? "未配置PD设备"
+                : $"{connectedCount}/{states.Count} 已连接";
             WmDriverStatus = wmDriver.IsInitialized ? "已初始化" : "未初始化";
 
             var acq = _services.GetRequiredService<IAcquisitionService>();

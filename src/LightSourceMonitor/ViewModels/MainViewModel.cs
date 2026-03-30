@@ -1,6 +1,7 @@
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using LightSourceMonitor.Drivers;
+using LightSourceMonitor.Models;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace LightSourceMonitor.ViewModels;
@@ -19,11 +20,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _lastAcquisitionTime = "--";
     [ObservableProperty] private bool _isSimulationMode;
 
-    public MainViewModel(IServiceProvider services, IPdArrayDriver pdDriver)
+    public MainViewModel(IServiceProvider services, IOptions<DriverSettings> driverOptions)
     {
         _services = services;
         _startTime = DateTime.Now;
-        IsSimulationMode = pdDriver is SimulatedPdArrayDriver;
+        IsSimulationMode = string.Equals(driverOptions.Value.Mode, "Simulated", StringComparison.OrdinalIgnoreCase);
 
         _uptimeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _uptimeTimer.Tick += (_, _) =>

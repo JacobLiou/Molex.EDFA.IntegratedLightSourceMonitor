@@ -4,11 +4,10 @@ namespace LightSourceMonitor.Drivers;
 
 public class SimulatedPdArrayDriver : IPdArrayDriver
 {
-    private const int ChannelCount = 8;
     private readonly ILogger<SimulatedPdArrayDriver> _logger;
     private readonly Random _rng = new();
-    private readonly double[] _baselines = new double[ChannelCount];
-    private readonly DateTime _startTime = DateTime.UtcNow;
+    private readonly List<double> _baselines = new();
+    private DateTime _startTime = DateTime.UtcNow;
     private bool _initialized;
 
     public bool IsOpen { get; private set; }
@@ -21,8 +20,9 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
 
     public bool Open(string instanceIdSubstring)
     {
-        DeviceSN = "SIM-PD-001";
+        DeviceSN = string.IsNullOrWhiteSpace(instanceIdSubstring) ? "SIM-PD-001" : instanceIdSubstring;
         IsOpen = true;
+        _startTime = DateTime.UtcNow;
         _logger.LogInformation("Simulated PD Array opened: {SN}", DeviceSN);
         return true;
     }
@@ -31,17 +31,8 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
     {
         if (!IsOpen) return false;
 
-        _baselines[0] = -8.5;
-        _baselines[1] = -9.2;
-        _baselines[2] = -10.1;
-        _baselines[3] = -11.8;
-        _baselines[4] = -10.5;
-        _baselines[5] = -12.0;
-        _baselines[6] = -13.3;
-        _baselines[7] = -11.6;
-
         _initialized = true;
-        _logger.LogInformation("Simulated PD Array initialized with {Count} channels", ChannelCount);
+        _logger.LogInformation("Simulated PD Array initialized: {SN}", DeviceSN);
         return true;
     }
 
@@ -49,7 +40,9 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
     {
         if (!IsOpen || !_initialized) return null;
 
-        int count = Math.Min(channelCount, ChannelCount);
+        int count = Math.Max(1, channelCount);
+        EnsureBaselineCount(count);
+
         var powers = new double[count];
         double elapsed = (DateTime.UtcNow - _startTime).TotalSeconds;
 
@@ -87,5 +80,15 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
         double u1 = 1.0 - _rng.NextDouble();
         double u2 = _rng.NextDouble();
         return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+    }
+
+    private void EnsureBaselineCount(int count)
+    {
+        while (_baselines.Count < count)
+        {
+            int idx = _baselines.Count;
+            // Spread channels around -8 dBm to -14 dBm for realistic multi-channel simulation.
+            _baselines.Add(-8.0 - (idx % 8) * 0.9 - (idx / 8) * 0.3);
+        }
     }
 }

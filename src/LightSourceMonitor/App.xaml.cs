@@ -86,16 +86,19 @@ public partial class App : Application
                 var useSimulated = string.Equals(driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase);
                 if (useSimulated)
                 {
-                    services.AddSingleton<IPdArrayDriver, SimulatedPdArrayDriver>();
+                    services.AddTransient<IPdArrayDriver, SimulatedPdArrayDriver>();
                     services.AddSingleton<IWavelengthMeterDriver, SimulatedWavelengthMeterDriver>();
                     Log.Information("Driver mode: Simulated");
                 }
                 else
                 {
-                    services.AddSingleton<IPdArrayDriver, PdArrayDriver>();
+                    services.AddTransient<IPdArrayDriver, PdArrayDriver>();
                     services.AddSingleton<IWavelengthMeterDriver, WavelengthMeterDriver>();
                     Log.Information("Driver mode: Hardware");
                 }
+
+                services.AddSingleton<Func<IPdArrayDriver>>(sp => () => sp.GetRequiredService<IPdArrayDriver>());
+                services.AddSingleton<IPdDriverManager, PdDriverManager>();
 
                 services.AddSingleton<IAlarmService, AlarmService>();
                 services.AddSingleton<IEmailService, EmailService>();
@@ -123,18 +126,23 @@ public partial class App : Application
 
             if (!await db.LaserChannels.AnyAsync())
             {
-                db.LaserChannels.AddRange(
-                    new LaserChannel { ChannelIndex = 0, ChannelName = "CH1-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1310.0, SpecPowerMin = -9.5, SpecPowerMax = -7.5, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 1, ChannelName = "CH2-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1310.5, SpecPowerMin = -10.2, SpecPowerMax = -8.2, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 2, ChannelName = "CH3-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1311.0, SpecPowerMin = -11.1, SpecPowerMax = -9.1, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 3, ChannelName = "CH4-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1311.5, SpecPowerMin = -12.8, SpecPowerMax = -10.8, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 4, ChannelName = "CH5-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1550.0, SpecPowerMin = -11.5, SpecPowerMax = -9.5, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 5, ChannelName = "CH6-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1550.5, SpecPowerMin = -13.0, SpecPowerMax = -11.0, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 6, ChannelName = "CH7-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1551.0, SpecPowerMin = -14.3, SpecPowerMax = -12.3, AlarmDelta = 0.15 },
-                    new LaserChannel { ChannelIndex = 7, ChannelName = "CH8-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1551.5, SpecPowerMin = -12.6, SpecPowerMax = -10.6, AlarmDelta = 0.15 }
-                );
+                var driverSettings = _host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<DriverSettings>>().Value;
+                var seeded = SeedChannelsFromConfig(db, driverSettings);
+                if (!seeded)
+                {
+                    db.LaserChannels.AddRange(
+                        new LaserChannel { ChannelIndex = 0, ChannelName = "CH1-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1310.0, SpecPowerMin = -9.5, SpecPowerMax = -7.5, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 1, ChannelName = "CH2-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1310.5, SpecPowerMin = -10.2, SpecPowerMax = -8.2, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 2, ChannelName = "CH3-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1311.0, SpecPowerMin = -11.1, SpecPowerMax = -9.1, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 3, ChannelName = "CH4-1310", DeviceSN = "SIM-PD-001", SpecWavelength = 1311.5, SpecPowerMin = -12.8, SpecPowerMax = -10.8, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 4, ChannelName = "CH5-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1550.0, SpecPowerMin = -11.5, SpecPowerMax = -9.5, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 5, ChannelName = "CH6-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1550.5, SpecPowerMin = -13.0, SpecPowerMax = -11.0, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 6, ChannelName = "CH7-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1551.0, SpecPowerMin = -14.3, SpecPowerMax = -12.3, AlarmDelta = 0.15 },
+                        new LaserChannel { ChannelIndex = 7, ChannelName = "CH8-1550", DeviceSN = "SIM-PD-001", SpecWavelength = 1551.5, SpecPowerMin = -12.6, SpecPowerMax = -10.6, AlarmDelta = 0.15 }
+                    );
+                }
                 await db.SaveChangesAsync();
-                Log.Information("Seeded 8 demo LaserChannels for simulation mode");
+                Log.Information("Seeded LaserChannels");
             }
         }
 
@@ -221,5 +229,35 @@ public partial class App : Application
         }
 
         base.OnExit(e);
+    }
+
+    private static bool SeedChannelsFromConfig(MonitorDbContext db, DriverSettings settings)
+    {
+        var devices = settings.GetEffectiveDevices();
+        var channels = new List<LaserChannel>();
+
+        foreach (var device in devices)
+        {
+            foreach (var ch in device.Channels.Where(c => c.IsEnabled))
+            {
+                channels.Add(new LaserChannel
+                {
+                    ChannelIndex = ch.ChannelIndex,
+                    ChannelName = string.IsNullOrWhiteSpace(ch.ChannelName) ? $"CH{ch.ChannelIndex + 1}" : ch.ChannelName,
+                    DeviceSN = device.DeviceSN,
+                    SpecWavelength = ch.SpecWavelength,
+                    SpecPowerMin = ch.SpecPowerMin,
+                    SpecPowerMax = ch.SpecPowerMax,
+                    AlarmDelta = ch.AlarmDelta,
+                    IsEnabled = ch.IsEnabled
+                });
+            }
+        }
+
+        if (channels.Count == 0)
+            return false;
+
+        db.LaserChannels.AddRange(channels);
+        return true;
     }
 }

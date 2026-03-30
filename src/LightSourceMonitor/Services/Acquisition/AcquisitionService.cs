@@ -15,20 +15,23 @@ public class AcquisitionService : IAcquisitionService
     private readonly IServiceProvider _services;
     private readonly ILogger<AcquisitionService> _logger;
     private readonly IAlarmService _alarmService;
-    private readonly IPdArrayDriver _pdDriver;
+    private readonly IPdDriverManager _pdDriverManager;
     private readonly IWavelengthMeterDriver _wmDriver;
     private readonly DriverSettings _driverSettings;
     private CancellationTokenSource? _cts;
     private Task? _runningTask;
     private int _sampleCount;
     private int _consecutiveErrors;
-    private int _reconnectCounter;
     private bool _pdConnected;
+    private readonly Dictionary<string, int> _deviceReconnectCounters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, bool> _deviceStates = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsRunning { get; private set; }
     public bool IsPdConnected => _pdConnected;
+    public IReadOnlyDictionary<string, bool> PdDeviceStates => _deviceStates;
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
     public event Action<bool>? PdConnectionChanged;
+    public event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;
 
     public int SamplingIntervalMs { get; set; } = 2000;
     public int WmSweepEveryN { get; set; } = 5;
@@ -38,14 +41,14 @@ public class AcquisitionService : IAcquisitionService
         IServiceProvider services,
         ILogger<AcquisitionService> logger,
         IAlarmService alarmService,
-        IPdArrayDriver pdDriver,
+        IPdDriverManager pdDriverManager,
         IWavelengthMeterDriver wmDriver,
         IOptions<DriverSettings> driverOptions)
     {
         _services = services;
         _logger = logger;
         _alarmService = alarmService;
-        _pdDriver = pdDriver;
+        _pdDriverManager = pdDriverManager;
         _wmDriver = wmDriver;
         _driverSettings = driverOptions.Value;
     }
@@ -54,36 +57,19 @@ public class AcquisitionService : IAcquisitionService
     {
         if (IsRunning) return Task.CompletedTask;
 
-        var pdOpenArg = string.IsNullOrWhiteSpace(_driverSettings.PdOpenArgument)
-            ? "SIM"
-            : _driverSettings.PdOpenArgument;
+        var effectiveDevices = _driverSettings.GetEffectiveDevices();
+        ValidateDeviceSettings(effectiveDevices);
+        _pdDriverManager.ConfigureDevices(effectiveDevices);
 
-        if (!_pdDriver.IsOpen)
+        _deviceReconnectCounters.Clear();
+        _deviceStates.Clear();
+        foreach (var device in effectiveDevices)
         {
-            try
-            {
-                if (_pdDriver.Open(pdOpenArg))
-                {
-                    _pdDriver.Initialize();
-                    _pdConnected = true;
-                    _logger.LogInformation("PD driver opened: {SN}", _pdDriver.DeviceSN);
-                }
-                else
-                {
-                    _pdConnected = false;
-                    _logger.LogWarning("PD device not found ({Arg}), starting in offline mode", pdOpenArg);
-                }
-            }
-            catch (Exception ex)
-            {
-                _pdConnected = false;
-                _logger.LogError(ex, "PD driver initialization failed, starting in offline mode");
-            }
+            _deviceReconnectCounters[device.DeviceSN] = 0;
+            _deviceStates[device.DeviceSN] = _pdDriverManager.TryReconnect(device.DeviceSN);
         }
-        else
-        {
-            _pdConnected = true;
-        }
+
+        UpdateAndPublishPdStates(forceNotify: true);
 
         try
         {
@@ -98,7 +84,7 @@ public class AcquisitionService : IAcquisitionService
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         IsRunning = true;
         _runningTask = Task.Run(() => AcquisitionLoop(_cts.Token), _cts.Token);
-        _logger.LogInformation("Acquisition started (PD={PdSN}, WM={WmInit})", _pdDriver.DeviceSN, _wmDriver.IsInitialized);
+        _logger.LogInformation("Acquisition started (PD devices={Count}, WM={WmInit})", _deviceStates.Count, _wmDriver.IsInitialized);
         return Task.CompletedTask;
     }
 
@@ -120,8 +106,8 @@ public class AcquisitionService : IAcquisitionService
             }
         }
 
-        try { _pdDriver.Close(); }
-        catch (Exception ex) { _logger.LogWarning(ex, "Error closing PD driver"); }
+        try { _pdDriverManager.CloseAll(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Error closing PD drivers"); }
 
         try { _wmDriver.Close(); }
         catch (Exception ex) { _logger.LogWarning(ex, "Error closing WM driver"); }
@@ -152,92 +138,74 @@ public class AcquisitionService : IAcquisitionService
                     continue;
                 }
 
-                // ── PD 连接检测 & 自动重连 ────────────────────────────
-                if (!_pdDriver.IsOpen)
-                {
-                    _reconnectCounter++;
-                    if (_pdConnected)
-                    {
-                        _pdConnected = false;
-                        PdConnectionChanged?.Invoke(false);
-                        _logger.LogWarning("PD driver disconnected");
-                    }
-
-                    // 每 30 个周期尝试一次重连
-                    if (_reconnectCounter % 30 == 0)
-                    {
-                        var arg = string.IsNullOrWhiteSpace(_driverSettings.PdOpenArgument) ? "SIM" : _driverSettings.PdOpenArgument;
-                        try
-                        {
-                            if (_pdDriver.Open(arg))
-                            {
-                                _pdDriver.Initialize();
-                                _pdConnected = true;
-                                PdConnectionChanged?.Invoke(true);
-                                _logger.LogInformation("PD driver reconnected: {SN}", _pdDriver.DeviceSN);
-                            }
-                        }
-                        catch (Exception rex)
-                        {
-                            _logger.LogDebug(rex, "PD reconnect attempt failed");
-                        }
-                    }
-
-                    // 离线时不产生假数据，等下一个周期
-                    await Task.Delay(SamplingIntervalMs, ct);
-                    continue;
-                }
-
-                // PD 刚重连上
-                if (!_pdConnected)
-                {
-                    _pdConnected = true;
-                    _reconnectCounter = 0;
-                    PdConnectionChanged?.Invoke(true);
-                }
-
-                var powers = _pdDriver.GetActualPower(channels.Count);
-                if (powers == null)
-                {
-                    _logger.LogWarning("GetActualPower returned null despite driver being open");
-                    await Task.Delay(SamplingIntervalMs, ct);
-                    continue;
-                }
-
                 bool doWmSweep = (_sampleCount % WmSweepEveryN == 0);
-
                 var batch = new Dictionary<int, MeasurementRecord>();
 
-                for (int i = 0; i < channels.Count; i++)
-                {
-                    var ch = channels[i];
-                    double power = i < powers.Length ? powers[i] : 0;
-                    double wavelength = ch.SpecWavelength;
+                var grouped = channels
+                    .GroupBy(c => c.DeviceSN)
+                    .ToList();
 
-                    if (doWmSweep)
+                foreach (var deviceGroup in grouped)
+                {
+                    var deviceSn = deviceGroup.Key;
+                    var orderedChannels = deviceGroup
+                        .OrderBy(c => c.ChannelIndex)
+                        .ToList();
+
+                    if (!_pdDriverManager.TryReadPower(deviceSn, orderedChannels.Count, out var powers))
                     {
-                        try
+                        _deviceReconnectCounters[deviceSn] = _deviceReconnectCounters.GetValueOrDefault(deviceSn) + 1;
+                        if (_deviceReconnectCounters[deviceSn] % 30 == 0)
                         {
-                            _wmDriver.SetParameters(i, 0, ch.SpecWavelength - 5, ch.SpecWavelength + 5, 3.0, -30.0);
-                            _wmDriver.ExecuteSingleSweep(i);
-                            var result = _wmDriver.GetResult(i);
-                            if (result.HasValue && result.Value.count > 0)
-                                wavelength = result.Value.wavelengths[0];
+                            _pdDriverManager.TryReconnect(deviceSn);
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "WM sweep failed for channel {Ch}", ch.ChannelName);
-                        }
+
+                        _deviceStates[deviceSn] = false;
+                        continue;
                     }
 
-                    var record = new MeasurementRecord
+                    _deviceReconnectCounters[deviceSn] = 0;
+                    _deviceStates[deviceSn] = true;
+
+                    for (int i = 0; i < orderedChannels.Count; i++)
                     {
-                        ChannelId = ch.Id,
-                        Timestamp = now,
-                        Power = power,
-                        Wavelength = wavelength
-                    };
-                    batch[ch.Id] = record;
+                        var ch = orderedChannels[i];
+                        double power = powers != null && i < powers.Length ? powers[i] : 0;
+                        double wavelength = ch.SpecWavelength;
+
+                        if (doWmSweep)
+                        {
+                            try
+                            {
+                                _wmDriver.SetParameters(i, 0, ch.SpecWavelength - 5, ch.SpecWavelength + 5, 3.0, -30.0);
+                                _wmDriver.ExecuteSingleSweep(i);
+                                var result = _wmDriver.GetResult(i);
+                                if (result.HasValue && result.Value.count > 0)
+                                    wavelength = result.Value.wavelengths[0];
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "WM sweep failed for channel {Ch}", ch.ChannelName);
+                            }
+                        }
+
+                        var record = new MeasurementRecord
+                        {
+                            ChannelId = ch.Id,
+                            Timestamp = now,
+                            Power = power,
+                            Wavelength = wavelength
+                        };
+                        batch[ch.Id] = record;
+                    }
+                }
+
+                UpdateAndPublishPdStates();
+
+                if (batch.Count == 0)
+                {
+                    await Task.Delay(SamplingIntervalMs, ct);
+                    continue;
                 }
 
                 _sampleCount++;
@@ -290,5 +258,44 @@ public class AcquisitionService : IAcquisitionService
         }
 
         _logger.LogInformation("Acquisition loop exited");
+    }
+
+    private void ValidateDeviceSettings(IReadOnlyList<PdDeviceSettings> devices)
+    {
+        var duplicateSn = devices
+            .GroupBy(d => d.DeviceSN, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        if (duplicateSn.Count > 0)
+            throw new InvalidOperationException($"Duplicate DeviceSN in Driver.Devices: {string.Join(", ", duplicateSn)}");
+
+        var duplicateUsb = devices
+            .GroupBy(d => d.UsbAddress, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        if (duplicateUsb.Count > 0)
+            throw new InvalidOperationException($"Duplicate UsbAddress in Driver.Devices: {string.Join(", ", duplicateUsb)}");
+
+        foreach (var device in devices)
+        {
+            if (string.IsNullOrWhiteSpace(device.DeviceSN))
+                throw new InvalidOperationException("DeviceSN must not be empty in Driver.Devices");
+            if (string.IsNullOrWhiteSpace(device.UsbAddress))
+                throw new InvalidOperationException($"UsbAddress must not be empty for device {device.DeviceSN}");
+        }
+    }
+
+    private void UpdateAndPublishPdStates(bool forceNotify = false)
+    {
+        var anyConnectedNow = _deviceStates.Values.Any(v => v);
+        if (forceNotify || anyConnectedNow != _pdConnected)
+        {
+            _pdConnected = anyConnectedNow;
+            PdConnectionChanged?.Invoke(anyConnectedNow);
+        }
+
+        PdDeviceConnectionChanged?.Invoke(new Dictionary<string, bool>(_deviceStates, StringComparer.OrdinalIgnoreCase));
     }
 }

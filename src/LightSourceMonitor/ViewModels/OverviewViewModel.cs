@@ -90,6 +90,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
 
         _acquisitionService.DataAcquired += OnDataAcquired;
         _acquisitionService.PdConnectionChanged += OnPdConnectionChanged;
+        _acquisitionService.PdDeviceConnectionChanged += OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised += OnAlarmRaised;
 
         LoadChannelsAsync().SafeFireAndForget("OverviewViewModel.LoadChannels");
@@ -151,6 +152,26 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 {
                     foreach (var channel in group.Channels)
                         channel.SetOffline();
+                }
+            }
+            RefreshKpi();
+        });
+    }
+
+    private void OnPdDeviceConnectionChanged(IReadOnlyDictionary<string, bool> states)
+    {
+        AsyncHelper.SafeDispatcherInvoke(() =>
+        {
+            foreach (var group in DeviceGroups)
+            {
+                if (states.TryGetValue(group.DeviceSn, out var online))
+                {
+                    group.IsOnline = online;
+                    if (!online)
+                    {
+                        foreach (var channel in group.Channels)
+                            channel.SetOffline();
+                    }
                 }
             }
             RefreshKpi();
@@ -224,6 +245,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _disposed = true;
         _acquisitionService.DataAcquired -= OnDataAcquired;
         _acquisitionService.PdConnectionChanged -= OnPdConnectionChanged;
+        _acquisitionService.PdDeviceConnectionChanged -= OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised -= OnAlarmRaised;
     }
 }
