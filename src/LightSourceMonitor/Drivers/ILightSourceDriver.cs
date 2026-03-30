@@ -22,3 +22,11 @@ public interface IWavelengthMeterDriver : IDisposable
     (double[] wavelengths, double[] powers, int count)? GetResult(int chIndex);
     void Close();
 }
+
+public interface IWavelengthServiceDriver : IDisposable
+{
+    bool IsConnected { get; }
+    Task<bool> ConnectAsync(string host, int port);
+    Task<bool> DisconnectAsync();
+    Task<(double wavelength, double power)> GetWavelengthAsync(string deviceId, int channelIndex);
+}

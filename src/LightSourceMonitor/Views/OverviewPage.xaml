@@ -175,6 +175,7 @@
                                                                         </TextBlock.Style>
                                                                     </TextBlock>
                                                                     <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="13" Margin="0,2,0,0"/>
+                                                                    <TextBlock Text="{Binding WavelengthDisplay, StringFormat='波长: {0} nm'}" Foreground="#9898B0" FontSize="11" Margin="0,4,0,0"/>
                                                                 </StackPanel>
                                                             </Border>
                                                         </DataTemplate>

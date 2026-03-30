@@ -77,6 +77,7 @@ public partial class App : Application
             .ConfigureServices((context, services) =>
             {
                 services.Configure<DriverSettings>(context.Configuration.GetSection("Driver"));
+                services.Configure<WavelengthServiceSettings>(context.Configuration.GetSection("WavelengthService"));
 
                 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "monitor.db");
                 services.AddDbContext<MonitorDbContext>(opts =>
@@ -122,6 +123,7 @@ public partial class App : Application
                 services.AddSingleton<Func<IPdArrayDriver>>(sp => () => sp.GetRequiredService<IPdArrayDriver>());
                 services.AddSingleton<IPdDriverManager, PdDriverManager>();
 
+                services.AddSingleton<IWavelengthServiceDriver, WavelengthServiceDriver>();
                 services.AddSingleton<IAlarmService, AlarmService>();
                 services.AddSingleton<IChannelCatalog, ChannelCatalog>();
                 services.AddSingleton<IEmailService, EmailService>();

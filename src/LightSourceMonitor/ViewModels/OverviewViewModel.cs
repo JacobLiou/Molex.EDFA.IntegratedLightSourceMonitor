@@ -27,12 +27,14 @@ public partial class ChannelCardViewModel : ObservableObject
     [ObservableProperty] private double _wavelength;
     [ObservableProperty] private bool _isOnline = false;
     [ObservableProperty] private string _displayValue = "---";
+    [ObservableProperty] private string _wavelengthDisplay = "---";
 
     public void SetOffline()
     {
         IsOnline = false;
         StatusColor = "#616161";
         DisplayValue = "---";
+        WavelengthDisplay = "---";
     }
 
     public void UpdateWithMeasurement(double power, double wavelength, double alarmDelta)
@@ -41,6 +43,7 @@ public partial class ChannelCardViewModel : ObservableObject
         CurrentValue = power;
         Wavelength = wavelength;
         DisplayValue = power.ToString("F2");
+        WavelengthDisplay = wavelength.ToString("F2");
 
         if (power > MaxValue) MaxValue = power;
         if (power < MinValue) MinValue = power;

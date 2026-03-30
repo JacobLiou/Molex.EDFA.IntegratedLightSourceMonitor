@@ -19,7 +19,9 @@ public class AcquisitionService : IAcquisitionService
     private readonly IChannelCatalog _channelCatalog;
     private readonly IPdDriverManager _pdDriverManager;
     private readonly IWavelengthMeterDriver _wmDriver;
+    private readonly IWavelengthServiceDriver _wmServiceDriver;
     private readonly DriverSettings _driverSettings;
+    private readonly WavelengthServiceSettings _wmServiceSettings;
     private CancellationTokenSource? _cts;
     private Task? _runningTask;
     private int _sampleCount;
@@ -47,7 +49,9 @@ public class AcquisitionService : IAcquisitionService
         IChannelCatalog channelCatalog,
         IPdDriverManager pdDriverManager,
         IWavelengthMeterDriver wmDriver,
-        IOptions<DriverSettings> driverOptions)
+        IWavelengthServiceDriver wmServiceDriver,
+        IOptions<DriverSettings> driverOptions,
+        IOptions<WavelengthServiceSettings> wmServiceOptions)
     {
         _services = services;
         _logger = logger;
@@ -55,12 +59,14 @@ public class AcquisitionService : IAcquisitionService
         _channelCatalog = channelCatalog;
         _pdDriverManager = pdDriverManager;
         _wmDriver = wmDriver;
+        _wmServiceDriver = wmServiceDriver;
         _driverSettings = driverOptions.Value;
+        _wmServiceSettings = wmServiceOptions.Value;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        if (IsRunning) return Task.CompletedTask;
+        if (IsRunning) return;
 
         var effectiveDevices = _driverSettings.GetEffectiveDevices();
         ValidateDeviceSettings(effectiveDevices);
@@ -86,11 +92,20 @@ public class AcquisitionService : IAcquisitionService
             _logger.LogWarning(ex, "WM driver initialization failed");
         }
 
+        try
+        {
+            await _wmServiceDriver.ConnectAsync(_wmServiceSettings.Host, _wmServiceSettings.Port);
+            _logger.LogInformation("WavelengthService connection initiated");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "WavelengthService connection failed (will use mock mode)");
+        }
+
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         IsRunning = true;
         _runningTask = Task.Run(() => AcquisitionLoop(_cts.Token), _cts.Token);
-        _logger.LogInformation("Acquisition started (PD devices={Count}, WM={WmInit})", _deviceStates.Count, _wmDriver.IsInitialized);
-        return Task.CompletedTask;
+        _logger.LogInformation("Acquisition started (PD devices={Count}, WM={WmInit}, Service={Service})", _deviceStates.Count, _wmDriver.IsInitialized, _wmServiceDriver.IsConnected);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -116,6 +131,9 @@ public class AcquisitionService : IAcquisitionService
 
         try { _wmDriver.Close(); }
         catch (Exception ex) { _logger.LogWarning(ex, "Error closing WM driver"); }
+
+        try { await _wmServiceDriver.DisconnectAsync(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Error disconnecting WM service"); }
 
         _logger.LogInformation("Acquisition stopped");
     }
@@ -186,15 +204,13 @@ public class AcquisitionService : IAcquisitionService
                         {
                             try
                             {
-                                _wmDriver.SetParameters(i, 0, ch.SpecWavelength - 5, ch.SpecWavelength + 5, 3.0, -30.0);
-                                _wmDriver.ExecuteSingleSweep(i);
-                                var result = _wmDriver.GetResult(i);
-                                if (result.HasValue && result.Value.count > 0)
-                                    wavelength = result.Value.wavelengths[0];
+                                var (wmWavelength, wmPower) = await _wmServiceDriver.GetWavelengthAsync(deviceSn, i);
+                                wavelength = wmWavelength;
+                                // Note: wmPower is from service, but we use PD power for consistency
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex, "WM sweep failed for channel {Ch}", ch.ChannelName);
+                                _logger.LogWarning(ex, "WM service query failed for channel {Ch}, using spec value", ch.ChannelName);
                             }
                         }
 
