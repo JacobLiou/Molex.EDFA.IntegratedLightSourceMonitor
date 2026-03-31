@@ -1,0 +1,89 @@
+class WBA:  # Bridgewater的WBA
+    def __init__(self, port):
+        self.dev = serial.Serial(port, 115200)
+
+    def close(self):
+        self.dev.close()
+
+    def to_ascii(self, h):
+        list_s = []
+        for i in range(0, len(h), 2):
+            list_s.append(chr(int(h[i:i + 2], 16)))
+        list_final = [i.replace('\r', '\t') for i in list_s]
+        return "".join(list_final)
+
+    def calc_sum(self, str_raw):
+        str_cal = str_raw.replace(" ", "")
+        result = 0
+        for i in range(0, len(str_cal), 2):
+            result = result ^ (int(str_cal[i:i + 2], 16))
+        return str(hex(result))[2:].zfill(2)
+
+    def toyoufuhao(self, dec_data, width):  # 十六进制转有符号位十进制
+        if dec_data > 2 ** (width - 1) - 1:
+            dec_data = 2 ** width - dec_data
+            dec_data = 0 - dec_data
+        return dec_data
+
+    def read_temp(self):  # 读WBA的4个环境温度
+        #nff -com3 temp.switch
+        #nff -com3 temp.board
+        #nff -com3 temp.case
+        #nff -com3 temp.lcos
+        self.dev.write(bytes.fromhex("dd 01 01 05 02 96 03 00 93 dd 02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        Case_Temperature = 0.1 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+        self.dev.write(bytes.fromhex("dd01 01050296010091 dd02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        Switch_Temperature = 0.1 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+        self.dev.write(bytes.fromhex("dd01 01050296020092 dd02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        Board_Temperature = 0.1 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+        self.dev.write(bytes.fromhex("dd01 01050296040094 dd02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        Lid_Temperature = 0.1 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+        return Case_Temperature, Switch_Temperature, Board_Temperature, Lid_Temperature
+
+    def read_voltage(self):
+        self.dev.write(bytes.fromhex("dd 01 01050297010090 dd 02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        vol1 = 0.01 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+
+        self.dev.write(bytes.fromhex("dd 01 01050297020093 dd 02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        vol2 = 0.01 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+
+        self.dev.write(bytes.fromhex("dd 01 01050297030092 dd 02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        vol3 = 0.01 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+
+        self.dev.write(bytes.fromhex("dd 01 01050297040095 dd 02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        vol4 = 0.01 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+        return vol1, vol2, vol3, vol4
+
+    def read_pressure(self):  # 读WBA的大气压
+        self.dev.write(bytes.fromhex("dd 01 01 05 02 98 01 00 9f dd 02"))
+        time.sleep(0.2)
+        n = self.dev.inWaiting()
+        buffer = self.dev.read(n).hex().upper()
+        if buffer[8:10] != "00":
+            raise Exception
+        Barometric_Pressure = 0.01 * self.toyoufuhao(int(buffer[10:14], 16), 16)
+        return Barometric_Pressure

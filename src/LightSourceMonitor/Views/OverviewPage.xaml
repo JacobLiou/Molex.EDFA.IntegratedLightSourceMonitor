@@ -5,113 +5,79 @@
              xmlns:vm="clr-namespace:LightSourceMonitor.ViewModels">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- KPI Summary Cards -->
-        <UniformGrid Grid.Row="0" Rows="1" Columns="4" Margin="0,0,0,16">
-            <Border Background="#23233D" CornerRadius="8" Margin="0,0,8,0" Padding="16">
-                <StackPanel>
-                    <TextBlock Text="激光器总数" Foreground="#9898B0"/>
-                    <TextBlock Text="{Binding TotalChannels}" Style="{StaticResource KpiValueText}" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-            <Border Background="#23233D" CornerRadius="8" Margin="4,0" Padding="16">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="8" Height="8" Fill="#00E676" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="正常通道" Foreground="#9898B0"/>
-                    </StackPanel>
-                    <TextBlock Text="{Binding NormalCount}" Foreground="#00E676"
-                               FontFamily="Consolas" FontSize="40" FontWeight="Bold" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-            <Border Background="#23233D" CornerRadius="8" Margin="4,0" Padding="16">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="8" Height="8" Fill="#FF1744" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="告警通道" Foreground="#9898B0"/>
-                    </StackPanel>
-                    <TextBlock Text="{Binding WarningCount}" Foreground="#FF1744"
-                               FontFamily="Consolas" FontSize="40" FontWeight="Bold" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-            <Border Background="#23233D" CornerRadius="8" Margin="8,0,0,0" Padding="16">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="8" Height="8" Fill="#616161" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="离线通道" Foreground="#9898B0"/>
-                    </StackPanel>
-                    <TextBlock Text="{Binding OfflineCount}" Foreground="#616161"
-                               FontFamily="Consolas" FontSize="40" FontWeight="Bold" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-        </UniformGrid>
+        <!-- Device Containers: PD left (2/3) + WBA right (1/3) -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- Device Container List -->
-        <Border Grid.Row="1" Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+            <!-- PD Device List -->
+            <Border Grid.Column="0" Background="#23233D" CornerRadius="8" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <DockPanel Margin="4,2,4,10">
-                    <TextBlock Text="PD 设备列表" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
-                    <Border Background="#1B1B2F" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right">
-                        <TextBlock Foreground="#9898B0" FontFamily="Consolas"
-                                   Text="{Binding DeviceGroups.Count, StringFormat=设备数: {0}}"/>
-                    </Border>
-                </DockPanel>
+                    <DockPanel Margin="4,2,4,10">
+                        <TextBlock Text="PD 设备列表" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
+                        <Border Background="#1B1B2F" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right">
+                            <TextBlock Foreground="#9898B0" FontFamily="Consolas"
+                                       Text="{Binding DeviceGroups.Count, StringFormat=设备数: {0}}"/>
+                        </Border>
+                    </DockPanel>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding DeviceGroups}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:DeviceGroupViewModel}">
-                                <Border CornerRadius="8" Margin="0,0,0,10" Padding="8" Background="#1B1B2F">
-                                    <Expander IsExpanded="True" Background="Transparent" BorderThickness="0">
-                                        <Expander.Header>
-                                            <DockPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,8,0">
-                                                        <Ellipse.Style>
-                                                            <Style TargetType="Ellipse">
-                                                                <Setter Property="Fill" Value="#616161"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsOnline}" Value="True">
-                                                                        <Setter Property="Fill" Value="#00E676"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Ellipse.Style>
-                                                    </Ellipse>
-                                                    <TextBlock Text="{Binding DeviceName}" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
-                                                    <TextBlock Text=" (SN: " Foreground="#9898B0"/>
-                                                    <TextBlock Text="{Binding DeviceSn}" Foreground="#9898B0" FontFamily="Consolas"/>
-                                                    <TextBlock Text=")" Foreground="#9898B0"/>
-                                                </StackPanel>
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                                    <TextBlock Margin="0,0,12,0" Foreground="#9898B0" FontFamily="Consolas"
-                                                               Text="{Binding Channels.Count, StringFormat=通道: {0}}"/>
-                                                    <TextBlock Foreground="#9898B0">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Text" Value="离线"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsOnline}" Value="True">
-                                                                        <Setter Property="Text" Value="在线"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </StackPanel>
-                                            </DockPanel>
-                                        </Expander.Header>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding DeviceGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:DeviceGroupViewModel}">
+                                    <Border CornerRadius="8" Margin="0,0,0,10" Padding="8" Background="#1B1B2F">
+                                        <Expander IsExpanded="True" Background="Transparent" BorderThickness="0">
+                                            <Expander.Header>
+                                                <DockPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse">
+                                                                    <Setter Property="Fill" Value="#616161"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                                            <Setter Property="Fill" Value="#00E676"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
+                                                        <TextBlock Text="{Binding DeviceName}" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
+                                                        <TextBlock Text=" (SN: " Foreground="#9898B0"/>
+                                                        <TextBlock Text="{Binding DeviceSn}" Foreground="#9898B0" FontFamily="Consolas"/>
+                                                        <TextBlock Text=")" Foreground="#9898B0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <TextBlock Margin="0,0,12,0" Foreground="#9898B0" FontFamily="Consolas"
+                                                                   Text="{Binding Channels.Count, StringFormat=通道: {0}}"/>
+                                                        <TextBlock Foreground="#9898B0">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="离线"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                                            <Setter Property="Text" Value="在线"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Expander.Header>
 
-                                        <StackPanel>
                                             <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
                                                 <ItemsControl ItemsSource="{Binding Channels}">
                                                     <ItemsControl.ItemsPanel>
@@ -182,60 +148,167 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </ScrollViewer>
+                                        </Expander>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
 
-                                            <StackPanel Margin="0,12,0,0">
-                                                <DockPanel Margin="2,0,2,8">
-                                                    <TextBlock Text="WBA监测" Foreground="#E8E8F0" FontSize="14" FontWeight="SemiBold"/>
-                                                    <TextBlock Foreground="#9898B0" HorizontalAlignment="Right"
-                                                               Text="{Binding WbaLastUpdate, StringFormat=更新时间: {0}}"/>
-                                                </DockPanel>
+            <!-- WBA Device List -->
+            <Border Grid.Column="2" Background="#23233D" CornerRadius="8" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                                                <ItemsControl ItemsSource="{Binding WbaMetrics}">
+                    <DockPanel Margin="4,2,4,10">
+                        <TextBlock Text="WBA 设备列表" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
+                        <Border Background="#1B1B2F" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right">
+                            <TextBlock Foreground="#9898B0" FontFamily="Consolas"
+                                       Text="{Binding WbaDeviceGroups.Count, StringFormat=设备数: {0}}"/>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding WbaDeviceGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:WbaDeviceGroupViewModel}">
+                                    <Border CornerRadius="8" Margin="0,0,0,10" Padding="10" Background="#1B1B2F" BorderThickness="1">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="BorderBrush" Value="#2A2A3E"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="#1E4A3A"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <!-- WBA Device Header -->
+                                            <DockPanel Margin="0,0,0,10">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill" Value="#616161"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                                        <Setter Property="Fill" Value="#00E676"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                    <TextBlock Text="{Binding DeviceSn}" FontSize="14" FontWeight="SemiBold"
+                                                               Foreground="#E8E8F0" FontFamily="Consolas"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding LastUpdate, StringFormat='更新: {0}'}"
+                                                           Foreground="#55556A" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </DockPanel>
+
+                                            <!-- No Data State -->
+                                            <TextBlock Text="等待 WBA 数据..." Foreground="#55556A" FontSize="12"
+                                                       HorizontalAlignment="Center" Margin="0,8,0,8">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasData}" Value="False">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- Data Panel -->
+                                            <StackPanel>
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasData}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+
+                                                <!-- Temperatures -->
+                                                <TextBlock Text="温度" Foreground="#9898B0" FontSize="11" Margin="0,0,0,4"/>
+                                                <ItemsControl ItemsSource="{Binding Temperatures}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
-                                                            <WrapPanel/>
+                                                            <UniformGrid Rows="2" Columns="2"/>
                                                         </ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type vm:WbaMetricViewModel}">
-                                                            <Border Width="110" Margin="0,0,8,8" Padding="10" CornerRadius="6"
-                                                                    Background="#23233D" BorderBrush="#334466" BorderThickness="1">
+                                                            <Border Margin="0,0,4,4" Padding="8,6" CornerRadius="4" Background="#23233D">
                                                                 <StackPanel>
-                                                                    <TextBlock Text="{Binding Name}" Foreground="#9898B0" FontSize="12"/>
-                                                                    <TextBlock Text="{Binding DisplayValue}" Foreground="#E8E8F0"
-                                                                               FontFamily="Consolas" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/>
-                                                                    <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="12"/>
+                                                                    <TextBlock Text="{Binding Name}" Foreground="#9898B0" FontSize="10"/>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                                        <TextBlock Text="{Binding DisplayValue}" Foreground="#FF9800"
+                                                                                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"/>
+                                                                        <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="10" Margin="2,4,0,0"/>
+                                                                    </StackPanel>
                                                                 </StackPanel>
                                                             </Border>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
-                                                <TextBlock Text="等待WBA数据" Foreground="#55556A" Margin="4,0,0,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding HasWbaData}" Value="False">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                <!-- Voltages -->
+                                                <TextBlock Text="电压" Foreground="#9898B0" FontSize="11" Margin="0,8,0,4"/>
+                                                <ItemsControl ItemsSource="{Binding Voltages}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <UniformGrid Rows="2" Columns="2"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:WbaMetricViewModel}">
+                                                            <Border Margin="0,0,4,4" Padding="8,6" CornerRadius="4" Background="#23233D">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding Name}" Foreground="#9898B0" FontSize="10"/>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                                        <TextBlock Text="{Binding DisplayValue}" Foreground="#448AFF"
+                                                                                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"/>
+                                                                        <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="10" Margin="2,4,0,0"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <!-- Pressure -->
+                                                <TextBlock Text="气压" Foreground="#9898B0" FontSize="11" Margin="0,8,0,4"/>
+                                                <Border Padding="8,6" CornerRadius="4" Background="#23233D">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding PressureDisplay}" Foreground="#00E5FF"
+                                                                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"/>
+                                                        <TextBlock Text=" kPa" Foreground="#55556A" FontSize="10" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
                                             </StackPanel>
                                         </StackPanel>
-                                    </Expander>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Grid>
-        </Border>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Recent Alarms Bar -->
-        <Border Grid.Row="2" Background="#23233D" CornerRadius="8" Padding="16" Margin="0,0,0,0">
+        <Border Grid.Row="1" Background="#23233D" CornerRadius="8" Padding="16" Margin="0,0,0,0">
             <StackPanel>
                 <DockPanel Margin="0,0,0,8">
                     <TextBlock Text="最新告警" FontSize="17" FontWeight="SemiBold" Foreground="#E8E8F0"/>

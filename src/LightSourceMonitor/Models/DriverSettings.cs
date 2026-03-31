@@ -11,8 +11,11 @@ public class DriverSettings
     // WM configuration XML path, e.g. .\\config\\UDL_WM.xml
     public string WmConfigXmlPath { get; set; } = "";
 
-    // Optional multi-device configuration. If empty, single-device fallback is used.
+    // Optional multi-device configuration for PD. If empty, single-device fallback is used.
     public List<PdDeviceSettings> Devices { get; set; } = new();
+
+    // Optional multi-device configuration for WBA. Completely independent from PD.
+    public List<WbaDeviceSettings> WbaDevices { get; set; } = new();
 
     public List<PdDeviceSettings> GetEffectiveDevices()
     {
@@ -103,6 +106,13 @@ public class DriverSettings
 
         return result;
     }
+
+    public List<WbaDeviceSettings> GetEffectiveWbaDevices()
+    {
+        return WbaDevices
+            .Where(d => d.Enabled)
+            .ToList();
+    }
 }
 
 public class DriverSettingsValidationResult
@@ -119,6 +129,13 @@ public class PdDeviceSettings
     public string WmConfigXmlPath { get; set; } = "";
     public bool Enabled { get; set; } = true;
     public List<PdChannelSettings> Channels { get; set; } = new();
+}
+
+public class WbaDeviceSettings
+{
+    public string DeviceSN { get; set; } = "";
+    public string ComPort { get; set; } = "";
+    public bool Enabled { get; set; } = true;
 }
 
 public class PdChannelSettings

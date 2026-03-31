@@ -9,6 +9,7 @@ using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Channels;
 using LightSourceMonitor.Services.Email;
 using LightSourceMonitor.Services.Tms;
+using HandyControl.Controls;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _pdDriverStatus = "";
     [ObservableProperty] private string _wmDriverStatus = "";
     [ObservableProperty] private bool _isAcquisitionRunning;
+    [ObservableProperty] private string _emailTestStatusIcon = "";
+    [ObservableProperty] private string _emailTestStatusColor = "#9898B0";
+    [ObservableProperty] private string _emailTestStatusText = "";
+
+    private int _consecutiveEmailFailureCount;
 
     public ObservableCollection<LaserChannel> Channels { get; } = new();
 
@@ -84,6 +90,7 @@ public partial class SettingsViewModel : ObservableObject
                 SmtpServer = email.SmtpServer;
                 SmtpPort = email.SmtpPort;
                 SmtpUsername = email.Username;
+                SmtpPassword = email.EncryptedPassword;
                 FromAddress = email.FromAddress;
                 Recipients = email.Recipients;
             }
@@ -139,6 +146,7 @@ public partial class SettingsViewModel : ObservableObject
             email.SmtpServer = SmtpServer;
             email.SmtpPort = SmtpPort;
             email.Username = SmtpUsername;
+            email.EncryptedPassword = SmtpPassword;
             email.FromAddress = FromAddress;
             email.Recipients = Recipients;
             if (email.Id == 0) db.EmailConfigs.Add(email);
@@ -161,18 +169,127 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task SaveEmailSettings()
+    {
+        if (!ValidateEmailConfig(out var error))
+        {
+            EmailTestStatusIcon = "✖";
+            EmailTestStatusColor = "#FF1744";
+            EmailTestStatusText = error;
+            StatusMessage = error;
+            return;
+        }
+
+        try
+        {
+            await PersistEmailSettingsAsync();
+            EmailTestStatusIcon = "✔";
+            EmailTestStatusColor = "#00E676";
+            EmailTestStatusText = "邮件配置已保存";
+            StatusMessage = "邮件配置已保存";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save email settings");
+            EmailTestStatusIcon = "✖";
+            EmailTestStatusColor = "#FF1744";
+            EmailTestStatusText = "邮件配置保存失败";
+            StatusMessage = "邮件配置保存失败: " + ex.Message;
+        }
+    }
+
+    [RelayCommand]
     private async Task TestSmtp()
     {
         try
         {
+            if (!ValidateEmailConfig(out var error))
+            {
+                EmailTestStatusIcon = "✖";
+                EmailTestStatusColor = "#FF1744";
+                EmailTestStatusText = error;
+                StatusMessage = error;
+                return;
+            }
+
+            await PersistEmailSettingsAsync();
+
             StatusMessage = "正在发送测试邮件...";
             await _emailService.SendTestEmailAsync();
+            _consecutiveEmailFailureCount = 0;
+            EmailTestStatusIcon = "✔";
+            EmailTestStatusColor = "#00E676";
+            EmailTestStatusText = "测试邮件发送成功";
             StatusMessage = "测试邮件已发送";
         }
         catch (Exception ex)
         {
+            _consecutiveEmailFailureCount++;
+            EmailTestStatusIcon = "✖";
+            EmailTestStatusColor = "#FF1744";
+            EmailTestStatusText = "测试邮件发送失败";
             StatusMessage = "发送失败: " + ex.Message;
+
+            if (_consecutiveEmailFailureCount >= 3)
+            {
+                Growl.WarningGlobal("邮件发送连续失败，请检查 SMTP 服务器、端口、账号密码和网络连通性。");
+            }
         }
+    }
+
+    private async Task PersistEmailSettingsAsync()
+    {
+        using var scope = _services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+        var email = await db.EmailConfigs.FirstOrDefaultAsync() ?? new EmailConfig();
+
+        email.SmtpServer = SmtpServer.Trim();
+        email.SmtpPort = SmtpPort;
+        email.Username = SmtpUsername.Trim();
+        email.EncryptedPassword = SmtpPassword;
+        email.FromAddress = FromAddress.Trim();
+        email.Recipients = Recipients.Trim();
+
+        if (email.Id == 0)
+            db.EmailConfigs.Add(email);
+
+        await db.SaveChangesAsync();
+    }
+
+    private bool ValidateEmailConfig(out string error)
+    {
+        if (string.IsNullOrWhiteSpace(SmtpServer))
+        {
+            error = "请先填写 SMTP 服务器";
+            return false;
+        }
+
+        if (SmtpPort <= 0 || SmtpPort > 65535)
+        {
+            error = "SMTP 端口无效";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(FromAddress))
+        {
+            error = "请先填写发件人邮箱";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(Recipients))
+        {
+            error = "请先填写至少一个收件人";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SmtpUsername) && string.IsNullOrWhiteSpace(SmtpPassword))
+        {
+            error = "已填写用户名，请补充密码";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
     }
 
     [RelayCommand]

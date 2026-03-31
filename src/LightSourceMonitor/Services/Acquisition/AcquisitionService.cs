@@ -22,6 +22,7 @@ public class AcquisitionService : IAcquisitionService
     private readonly IAlarmService _alarmService;
     private readonly IChannelCatalog _channelCatalog;
     private readonly IPdDriverManager _pdDriverManager;
+    private readonly IWbaDeviceManager _wbaDeviceManager;
     private readonly IWavelengthMeterDriver _wmDriver;
     private readonly IWavelengthServiceDriver _wmServiceDriver;
     private readonly DriverSettings _driverSettings;
@@ -33,6 +34,7 @@ public class AcquisitionService : IAcquisitionService
     private bool _pdConnected;
     private readonly Dictionary<string, int> _deviceReconnectCounters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _deviceStates = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _wbaDeviceSns = new();
 
     public bool IsRunning { get; private set; }
     public bool IsPdConnected => _pdConnected;
@@ -52,6 +54,7 @@ public class AcquisitionService : IAcquisitionService
         IAlarmService alarmService,
         IChannelCatalog channelCatalog,
         IPdDriverManager pdDriverManager,
+        IWbaDeviceManager wbaDeviceManager,
         IWavelengthMeterDriver wmDriver,
         IWavelengthServiceDriver wmServiceDriver,
         IOptions<DriverSettings> driverOptions,
@@ -62,6 +65,7 @@ public class AcquisitionService : IAcquisitionService
         _alarmService = alarmService;
         _channelCatalog = channelCatalog;
         _pdDriverManager = pdDriverManager;
+        _wbaDeviceManager = wbaDeviceManager;
         _wmDriver = wmDriver;
         _wmServiceDriver = wmServiceDriver;
         _driverSettings = driverOptions.Value;
@@ -75,6 +79,10 @@ public class AcquisitionService : IAcquisitionService
         var effectiveDevices = _driverSettings.GetEffectiveDevices();
         ValidateDeviceSettings(effectiveDevices);
         _pdDriverManager.ConfigureDevices(effectiveDevices);
+
+        var effectiveWbaDevices = _driverSettings.GetEffectiveWbaDevices();
+        _wbaDeviceManager.ConfigureDevices(effectiveWbaDevices);
+        _wbaDeviceSns = effectiveWbaDevices.Select(d => d.DeviceSN).ToList();
 
         _deviceReconnectCounters.Clear();
         _deviceStates.Clear();
@@ -132,6 +140,9 @@ public class AcquisitionService : IAcquisitionService
 
         try { _pdDriverManager.CloseAll(); }
         catch (Exception ex) { _logger.LogWarning(ex, "Error closing PD drivers"); }
+
+        try { _wbaDeviceManager.CloseAll(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Error closing WBA devices"); }
 
         try { _wmDriver.Close(); }
         catch (Exception ex) { _logger.LogWarning(ex, "Error closing WM driver"); }
@@ -210,11 +221,6 @@ public class AcquisitionService : IAcquisitionService
                     _deviceReconnectCounters[deviceSn] = 0;
                     _deviceStates[deviceSn] = true;
 
-                    if (_pdDriverManager.TryReadWbaTelemetry(deviceSn, out var wbaTelemetry) && wbaTelemetry != null)
-                    {
-                        wbaBatch[deviceSn] = wbaTelemetry;
-                    }
-
                     for (int i = 0; i < orderedChannels.Count; i++)
                     {
                         var ch = orderedChannels[i];
@@ -247,6 +253,18 @@ public class AcquisitionService : IAcquisitionService
                 }
 
                 UpdateAndPublishPdStates();
+
+                // Separate WBA acquisition loop (independent from PD)
+                foreach (var wbaSn in _wbaDeviceSns)
+                {
+                    if (_wbaDeviceManager.TryReadTelemetry(wbaSn, out var wbaTelemetry) && wbaTelemetry != null)
+                        wbaBatch[wbaSn] = wbaTelemetry;
+                }
+
+                if (wbaBatch.Count > 0)
+                {
+                    WbaTelemetryAcquired?.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
+                }
 
                 if (batch.Count == 0)
                 {

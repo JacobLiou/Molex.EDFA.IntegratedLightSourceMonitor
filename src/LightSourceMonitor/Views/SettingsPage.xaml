@@ -258,7 +258,8 @@
                                      Style="{StaticResource TextBoxExtend}" Margin="0,0,0,8"/>
 
                             <TextBlock Grid.Row="3" Text="密码:" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <PasswordBox Grid.Row="3" Grid.Column="1" Margin="0,0,0,8"/>
+                            <PasswordBox x:Name="EmailPasswordBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,8"
+                                         PasswordChanged="EmailPasswordBox_OnPasswordChanged"/>
 
                             <TextBlock Grid.Row="4" Text="发件人:" Foreground="#9898B0" VerticalAlignment="Center"/>
                             <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding FromAddress}"
@@ -270,8 +271,19 @@
                                      hc:InfoElement.Placeholder="user1@example.com; user2@example.com"
                                      Style="{StaticResource TextBoxExtend}" Margin="0,0,0,8"/>
                         </Grid>
-                        <Button Content="发送测试邮件" Command="{Binding TestSmtpCommand}" Margin="0,12,0,0"
-                                Style="{StaticResource ButtonPrimary}" HorizontalAlignment="Left" Padding="16,6"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <Button Content="保存邮件配置" Command="{Binding SaveEmailSettingsCommand}"
+                                Style="{StaticResource ButtonPrimary}" Background="#334466" BorderBrush="#448AFF"
+                                HorizontalAlignment="Left" Padding="16,6" Margin="0,0,8,0"/>
+                            <Button Content="发送测试邮件" Command="{Binding TestSmtpCommand}"
+                                    Style="{StaticResource ButtonPrimary}" HorizontalAlignment="Left" Padding="16,6"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <TextBlock Text="{Binding EmailTestStatusIcon}" Foreground="{Binding EmailTestStatusColor}"
+                                           FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding EmailTestStatusText}" Foreground="{Binding EmailTestStatusColor}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </TabItem>

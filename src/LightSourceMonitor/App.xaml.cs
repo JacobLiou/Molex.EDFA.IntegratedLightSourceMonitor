@@ -111,12 +111,15 @@ public partial class App : Application
                 {
                     services.AddTransient<IPdArrayDriver, SimulatedPdArrayDriver>();
                     services.AddSingleton<IWavelengthMeterDriver, SimulatedWavelengthMeterDriver>();
+                    services.AddSingleton<IWbaDeviceManager, SimulatedWbaDeviceManager>();
                     Log.Information("Driver mode: Simulated");
                 }
                 else
                 {
                     services.AddTransient<IPdArrayDriver, PdArrayDriver>();
                     services.AddSingleton<IWavelengthMeterDriver, WavelengthMeterDriver>();
+                    services.AddSingleton<WbaDriver>();
+                    services.AddSingleton<IWbaDeviceManager, WbaDeviceManager>();
                     Log.Information("Driver mode: Hardware");
                 }
 

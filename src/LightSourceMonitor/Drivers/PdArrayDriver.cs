@@ -170,7 +170,7 @@ public class PdArrayDriver : IPdArrayDriver
 
     public WbaTelemetrySnapshot? GetWbaTelemetry()
     {
-        // WBA protocol command is not defined yet in hardware mode.
+        // WBA is handled by independent WbaDeviceManager
         return null;
     }
 
