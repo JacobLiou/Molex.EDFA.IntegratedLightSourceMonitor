@@ -184,14 +184,16 @@ public class AcquisitionService : IAcquisitionService
 
                 if (channels.Count == 0)
                 {
-                    await Task.Delay(SamplingIntervalMs, ct);
+                    await Task.Delay(samplingIntervalMs, ct);
                     continue;
                 }
 
                 using var scope = _services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
 
-                bool doWmSweep = (_sampleCount % wmSweepEveryN == 0);
+                // Skip WM query on first cycle so PD/WBA can paint online state quickly.
+                bool doWmSweep = _sampleCount > 0 && (_sampleCount % wmSweepEveryN == 0);
+                bool disableWmForCurrentCycle = false;
                 var batch = new Dictionary<int, MeasurementRecord>();
                 var wbaBatch = new Dictionary<string, WbaTelemetrySnapshot>(StringComparer.OrdinalIgnoreCase);
 
@@ -206,7 +208,8 @@ public class AcquisitionService : IAcquisitionService
                         .OrderBy(c => c.ChannelIndex)
                         .ToList();
 
-                    if (!_pdDriverManager.TryReadPower(deviceSn, orderedChannels.Count, out var powers))
+                    var readChannelCount = orderedChannels.Max(c => c.ChannelIndex) + 1;
+                    if (!_pdDriverManager.TryReadPower(deviceSn, readChannelCount, out var powers))
                     {
                         _deviceReconnectCounters[deviceSn] = _deviceReconnectCounters.GetValueOrDefault(deviceSn) + 1;
                         if (_deviceReconnectCounters[deviceSn] % 30 == 0)
@@ -224,10 +227,12 @@ public class AcquisitionService : IAcquisitionService
                     for (int i = 0; i < orderedChannels.Count; i++)
                     {
                         var ch = orderedChannels[i];
-                        double power = powers != null && i < powers.Length ? powers[i] : 0;
+                        double power = powers != null && ch.ChannelIndex >= 0 && ch.ChannelIndex < powers.Length
+                            ? powers[ch.ChannelIndex]
+                            : 0;
                         double wavelength = ch.SpecWavelength;
 
-                        if (doWmSweep)
+                        if (doWmSweep && !disableWmForCurrentCycle)
                         {
                             try
                             {
@@ -237,6 +242,7 @@ public class AcquisitionService : IAcquisitionService
                             }
                             catch (Exception ex)
                             {
+                                disableWmForCurrentCycle = true;
                                 _logger.LogWarning(ex, "WM service query failed for channel {Ch}, using spec value", ch.ChannelName);
                             }
                         }
@@ -261,16 +267,19 @@ public class AcquisitionService : IAcquisitionService
                         wbaBatch[wbaSn] = wbaTelemetry;
                 }
 
-                if (wbaBatch.Count > 0)
-                {
-                    WbaTelemetryAcquired?.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
-                }
-
                 if (batch.Count == 0)
                 {
+                    if (wbaBatch.Count > 0)
+                        WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
+
                     await Task.Delay(samplingIntervalMs, ct);
                     continue;
                 }
+
+                // Push UI updates first; DB and alarm processing should not block dashboard refresh.
+                DataAcquired.SafeInvoke(batch, nameof(DataAcquired));
+                if (wbaBatch.Count > 0)
+                    WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
                 _sampleCount++;
 
@@ -299,10 +308,6 @@ public class AcquisitionService : IAcquisitionService
                         _logger.LogError(ex, "Alarm evaluation failed for channelId={Id}", kvp.Key);
                     }
                 }
-
-                DataAcquired.SafeInvoke(batch, nameof(DataAcquired));
-                if (wbaBatch.Count > 0)
-                    WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
                 _consecutiveErrors = 0;
             }

@@ -81,10 +81,16 @@ public delegate bool KusbInitDelegate(out IntPtr InterfaceHandle, IntPtr DevInfo
 public delegate bool KusbFreeDelegate(IntPtr InterfaceHandle);
 
 [UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
+public delegate bool KusbClaimInterfaceDelegate(
+    IntPtr InterfaceHandle,
+    byte NumberOrIndex,
+    [MarshalAs(UnmanagedType.Bool)] bool IsIndex);
+
+[UnmanagedFunctionPointer(CallingConvention.StdCall, SetLastError = true)]
 public delegate bool KusbControlTransferDelegate(
     IntPtr InterfaceHandle,
     WINUSB_SETUP_PACKET SetupPacket,
-    byte[] Buffer,
+    IntPtr Buffer,
     uint BufferLength,
     out uint LengthTransferred,
     IntPtr Overlapped);
