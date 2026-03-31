@@ -13,6 +13,10 @@ namespace LightSourceMonitor.Services.Acquisition;
 
 public class AcquisitionService : IAcquisitionService
 {
+    private const int MinSamplingIntervalMs = 100;
+    private const int MinSweepEveryN = 1;
+    private const int MinDbWriteEveryN = 1;
+
     private readonly IServiceProvider _services;
     private readonly ILogger<AcquisitionService> _logger;
     private readonly IAlarmService _alarmService;
@@ -144,8 +148,25 @@ public class AcquisitionService : IAcquisitionService
 
         while (!ct.IsCancellationRequested)
         {
+            var samplingIntervalMs = SamplingIntervalMs <= 0 ? MinSamplingIntervalMs : SamplingIntervalMs;
+
             try
             {
+                var wmSweepEveryN = WmSweepEveryN <= 0 ? MinSweepEveryN : WmSweepEveryN;
+                var dbWriteEveryN = DbWriteEveryN <= 0 ? MinDbWriteEveryN : DbWriteEveryN;
+
+                if (samplingIntervalMs != SamplingIntervalMs || wmSweepEveryN != WmSweepEveryN || dbWriteEveryN != DbWriteEveryN)
+                {
+                    _logger.LogWarning(
+                        "Invalid acquisition params detected (interval={Interval}, wmEvery={WmN}, dbEvery={DbN}), fallback applied (interval={SafeInterval}, wmEvery={SafeWmN}, dbEvery={SafeDbN})",
+                        SamplingIntervalMs,
+                        WmSweepEveryN,
+                        DbWriteEveryN,
+                        samplingIntervalMs,
+                        wmSweepEveryN,
+                        dbWriteEveryN);
+                }
+
                 var now = DateTime.Now;
 
                 var channels = _channelCatalog.GetEnabledChannels();
@@ -159,7 +180,7 @@ public class AcquisitionService : IAcquisitionService
                 using var scope = _services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
 
-                bool doWmSweep = (_sampleCount % WmSweepEveryN == 0);
+                bool doWmSweep = (_sampleCount % wmSweepEveryN == 0);
                 var batch = new Dictionary<int, MeasurementRecord>();
                 var wbaBatch = new Dictionary<string, WbaTelemetrySnapshot>(StringComparer.OrdinalIgnoreCase);
 
@@ -229,13 +250,13 @@ public class AcquisitionService : IAcquisitionService
 
                 if (batch.Count == 0)
                 {
-                    await Task.Delay(SamplingIntervalMs, ct);
+                    await Task.Delay(samplingIntervalMs, ct);
                     continue;
                 }
 
                 _sampleCount++;
 
-                if (_sampleCount % DbWriteEveryN == 0)
+                if (_sampleCount == 1 || _sampleCount % dbWriteEveryN == 0)
                 {
                     try
                     {
@@ -281,7 +302,7 @@ public class AcquisitionService : IAcquisitionService
                 }
             }
 
-            try { await Task.Delay(SamplingIntervalMs, ct); }
+            try { await Task.Delay(samplingIntervalMs, ct); }
             catch (OperationCanceledException) { break; }
         }
 

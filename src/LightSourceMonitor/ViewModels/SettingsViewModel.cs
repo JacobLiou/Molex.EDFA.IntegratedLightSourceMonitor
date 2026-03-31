@@ -18,6 +18,9 @@ namespace LightSourceMonitor.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
+    private const int MinSamplingIntervalMs = 100;
+    private const int MinCycleEveryN = 1;
+
     private readonly IServiceProvider _services;
     private readonly IEmailService _emailService;
     private readonly ITmsService _tmsService;
@@ -193,6 +196,12 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             var acq = _services.GetRequiredService<IAcquisitionService>();
+
+            // Prevent invalid values from breaking acquisition loop modulo operations.
+            SamplingIntervalMs = Math.Max(MinSamplingIntervalMs, SamplingIntervalMs);
+            WmSweepEveryN = Math.Max(MinCycleEveryN, WmSweepEveryN);
+            DbWriteEveryN = Math.Max(MinCycleEveryN, DbWriteEveryN);
+
             acq.SamplingIntervalMs = SamplingIntervalMs;
             acq.WmSweepEveryN = WmSweepEveryN;
             acq.DbWriteEveryN = DbWriteEveryN;

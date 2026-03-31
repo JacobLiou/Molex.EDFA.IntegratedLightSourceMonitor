@@ -11,6 +11,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IServiceProvider _services;
     private readonly DispatcherTimer _uptimeTimer;
     private DateTime _startTime;
+    private readonly Dictionary<int, object?> _pageCache = new();
 
     [ObservableProperty] private object? _currentPage;
     [ObservableProperty] private int _selectedNavIndex;
@@ -46,18 +47,20 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            var oldPage = CurrentPage;
-
-            CurrentPage = index switch
+            if (!_pageCache.TryGetValue(index, out var page) || page == null)
             {
-                0 => _services.GetService(typeof(OverviewViewModel)),
-                1 => _services.GetService(typeof(TrendViewModel)),
-                2 => _services.GetService(typeof(AlarmViewModel)),
-                3 => _services.GetService(typeof(SettingsViewModel)),
-                _ => CurrentPage
-            };
+                page = index switch
+                {
+                    0 => _services.GetService(typeof(OverviewViewModel)),
+                    1 => _services.GetService(typeof(TrendViewModel)),
+                    2 => _services.GetService(typeof(AlarmViewModel)),
+                    3 => _services.GetService(typeof(SettingsViewModel)),
+                    _ => CurrentPage
+                };
+                _pageCache[index] = page;
+            }
 
-            (oldPage as IDisposable)?.Dispose();
+            CurrentPage = page;
         }
         catch (Exception ex)
         {

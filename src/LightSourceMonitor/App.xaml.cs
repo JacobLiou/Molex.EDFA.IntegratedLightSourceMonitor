@@ -150,6 +150,9 @@ public partial class App : Application
         {
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
             await db.Database.MigrateAsync();
+            var repaired = await LegacySchemaRepair.EnsureNoLegacyLaserChannelForeignKeysAsync(db);
+            if (repaired)
+                Log.Warning("Detected legacy LaserChannels FK constraints in existing DB; schema was repaired automatically.");
             Log.Information("Database migrated successfully");
         }
 

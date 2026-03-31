@@ -8,6 +8,7 @@ using LightSourceMonitor.Services.Alarm;
 using LightSourceMonitor.Services.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using System.Windows.Threading;
 
 namespace LightSourceMonitor.ViewModels;
 
@@ -87,6 +88,8 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     private readonly IAlarmService _alarmService;
     private readonly Dictionary<int, (ChannelCardViewModel card, double alarmDelta)> _channelMap = new();
     private readonly Dictionary<string, DeviceGroupViewModel> _deviceMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly DispatcherTimer _kpiRefreshTimer;
+    private bool _kpiRefreshPending;
 
     [ObservableProperty] private int _totalChannels;
     [ObservableProperty] private int _normalCount;
@@ -108,6 +111,15 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _acquisitionService.PdConnectionChanged += OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged += OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised += OnAlarmRaised;
+
+        _kpiRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _kpiRefreshTimer.Tick += (_, _) =>
+        {
+            if (!_kpiRefreshPending) return;
+            _kpiRefreshPending = false;
+            RefreshKpi();
+        };
+        _kpiRefreshTimer.Start();
 
         LoadChannelsAsync().SafeFireAndForget("OverviewViewModel.LoadChannels");
     }
@@ -154,7 +166,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 _deviceMap[group.DeviceSn] = group;
             }
 
-            RefreshKpi();
+            RequestKpiRefresh();
         });
     }
 
@@ -173,7 +185,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                     SetWbaOffline(group);
                 }
             }
-            RefreshKpi();
+            RequestKpiRefresh();
         });
     }
 
@@ -195,7 +207,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                     }
                 }
             }
-            RefreshKpi();
+            RequestKpiRefresh();
         });
     }
 
@@ -315,6 +327,11 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         OfflineCount = offline;
     }
 
+    private void RequestKpiRefresh()
+    {
+        _kpiRefreshPending = true;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -324,6 +341,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _acquisitionService.PdConnectionChanged -= OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged -= OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised -= OnAlarmRaised;
+        _kpiRefreshTimer.Stop();
     }
 }
 
