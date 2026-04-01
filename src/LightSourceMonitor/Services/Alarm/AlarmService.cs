@@ -5,6 +5,7 @@ using LightSourceMonitor.Services.Email;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 
 namespace LightSourceMonitor.Services.Alarm;
 
@@ -14,8 +15,8 @@ public class AlarmService : IAlarmService
     private readonly ILogger<AlarmService> _logger;
     private readonly IEmailService _emailService;
     private readonly AlarmEmailOptions _emailOptions;
-    private readonly Dictionary<string, DateTime> _lastEmailSentUtc = new(StringComparer.Ordinal);
-    private readonly object _emailThrottleLock = new();
+    private readonly ConcurrentDictionary<string, DateTime> _lastEmailSentUtc = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _emailSendGate = new(1, 1);
 
     public event Action<AlarmEvent>? AlarmRaised;
 
@@ -96,11 +97,8 @@ public class AlarmService : IAlarmService
 
     private void ClearEmailThrottleForChannel(int channelId)
     {
-        lock (_emailThrottleLock)
-        {
-            _lastEmailSentUtc.Remove(EmailThrottleKey(channelId, AlarmType.PowerDrift));
-            _lastEmailSentUtc.Remove(EmailThrottleKey(channelId, AlarmType.WavelengthDrift));
-        }
+        _lastEmailSentUtc.TryRemove(EmailThrottleKey(channelId, AlarmType.PowerDrift), out _);
+        _lastEmailSentUtc.TryRemove(EmailThrottleKey(channelId, AlarmType.WavelengthDrift), out _);
     }
 
     private static string EmailThrottleKey(int channelId, AlarmType type) => $"{channelId}_{type}";
@@ -108,18 +106,24 @@ public class AlarmService : IAlarmService
     private TimeSpan GetMinEmailInterval()
     {
         var m = _emailOptions.MinIntervalMinutes;
-        if (m < 1) m = 1;
+        if (m < 30) m = 30;
         if (m > 24 * 60) m = 24 * 60;
         return TimeSpan.FromMinutes(m);
     }
 
     private async Task TrySendEmailAsync(AlarmEvent alarm, LaserChannel channel)
     {
+        if (!await _emailSendGate.WaitAsync(0))
+        {
+            _logger.LogDebug("Alarm email skipped: another send task is in progress");
+            return;
+        }
+
         var key = EmailThrottleKey(alarm.ChannelId, alarm.AlarmType);
         var interval = GetMinEmailInterval();
         var nowUtc = DateTime.UtcNow;
 
-        lock (_emailThrottleLock)
+        try
         {
             if (_lastEmailSentUtc.TryGetValue(key, out var lastSentUtc) && nowUtc - lastSentUtc < interval)
             {
@@ -129,12 +133,9 @@ public class AlarmService : IAlarmService
                 return;
             }
 
-            // Reserve before await so overlapping acquisition cycles cannot send duplicate mails.
+            // Reserve before await so concurrent background tasks cannot send duplicate mails.
             _lastEmailSentUtc[key] = nowUtc;
-        }
 
-        try
-        {
             await _emailService.SendAlarmEmailAsync(alarm);
             alarm.EmailSent = true;
 
@@ -147,6 +148,10 @@ public class AlarmService : IAlarmService
         {
             _logger.LogError(ex, "Failed to send alarm email");
             // Keep throttle reservation to avoid hammering a failing API; next window opens after interval.
+        }
+        finally
+        {
+            _emailSendGate.Release();
         }
     }
 }
