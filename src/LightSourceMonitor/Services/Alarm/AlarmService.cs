@@ -27,6 +27,7 @@ public class AlarmService : IAlarmService
     public async Task EvaluateAsync(MeasurementRecord record, LaserChannel channel)
     {
         var powerDelta = Math.Abs(record.Power - (channel.SpecPowerMin + channel.SpecPowerMax) / 2.0);
+        // Acquisition stores SpecWavelength in record.Wavelength; WM live readings are on the overview table only.
         var wlDelta = channel.SpecWavelength > 0
             ? Math.Abs(record.Wavelength - channel.SpecWavelength)
             : 0;

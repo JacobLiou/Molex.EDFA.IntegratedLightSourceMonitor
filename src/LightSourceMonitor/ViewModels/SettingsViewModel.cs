@@ -28,6 +28,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IChannelCatalog _channelCatalog;
     private readonly IPdDriverManager _pdDriverManager;
     private readonly DriverSettings _driverSettings;
+    private readonly WavelengthServiceSettings _wmServiceSettings;
     private readonly ILogger<SettingsViewModel> _logger;
 
     [ObservableProperty] private string _smtpServer = "";
@@ -45,7 +46,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private int _tmsUploadIntervalSec = 300;
 
     [ObservableProperty] private int _samplingIntervalMs = 5000;
-    [ObservableProperty] private int _wmSweepEveryN = 10;
+    [ObservableProperty] private int _wmSweepEveryN = 36;
     [ObservableProperty] private int _dbWriteEveryN = 10;
 
     [ObservableProperty] private string _statusMessage = "";
@@ -54,6 +55,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _pdDriverStatus = "";
     [ObservableProperty] private string _wmDriverStatus = "";
     [ObservableProperty] private bool _isAcquisitionRunning;
+    [ObservableProperty] private string _wmConfigXmlPath = "";
+    [ObservableProperty] private string _wmServiceMode = "";
+    [ObservableProperty] private string _wmComPort = "";
+    [ObservableProperty] private int _wmComBaudRate;
+    [ObservableProperty] private int _wmTableChannelCount;
+    [ObservableProperty] private string _wmQueryDeviceId = "";
+    [ObservableProperty] private bool _wmServiceIsSimulated;
     [ObservableProperty] private string _emailTestStatusIcon = "";
     [ObservableProperty] private string _emailTestStatusColor = "#9898B0";
     [ObservableProperty] private string _emailTestStatusText = "";
@@ -61,10 +69,12 @@ public partial class SettingsViewModel : ObservableObject
     private int _consecutiveEmailFailureCount;
 
     public ObservableCollection<LaserChannel> Channels { get; } = new();
+    public ObservableCollection<WbaDeviceSettings> WbaDevices { get; } = new();
 
     public SettingsViewModel(IServiceProvider services, IEmailService emailService,
                              ITmsService tmsService, IChannelCatalog channelCatalog, IPdDriverManager pdDriverManager,
                              IOptions<DriverSettings> driverOptions,
+                             IOptions<WavelengthServiceSettings> wmServiceOptions,
                              ILogger<SettingsViewModel> logger)
     {
         _services = services;
@@ -73,6 +83,7 @@ public partial class SettingsViewModel : ObservableObject
         _channelCatalog = channelCatalog;
         _pdDriverManager = pdDriverManager;
         _driverSettings = driverOptions.Value;
+        _wmServiceSettings = wmServiceOptions.Value;
         _logger = logger;
         LoadSettingsAsync().SafeFireAndForget("SettingsViewModel.LoadSettings");
     }
@@ -110,10 +121,28 @@ public partial class SettingsViewModel : ObservableObject
             Channels.Clear();
             foreach (var ch in channels) Channels.Add(ch);
 
+            WbaDevices.Clear();
+            foreach (var wba in _driverSettings.WbaDevices)
+                WbaDevices.Add(wba);
+
             var wmDriver = _services.GetRequiredService<IWavelengthMeterDriver>();
             DriverMode = string.Equals(_driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase)
                 ? "模拟模式 (Simulated)"
                 : "硬件模式 (Hardware)";
+
+            WmConfigXmlPath = string.IsNullOrWhiteSpace(_driverSettings.WmConfigXmlPath)
+                ? "(未配置)"
+                : _driverSettings.WmConfigXmlPath;
+            WmServiceMode = string.IsNullOrWhiteSpace(_wmServiceSettings.Mode)
+                ? "Socket"
+                : _wmServiceSettings.Mode;
+            WmComPort = _wmServiceSettings.ComPort;
+            WmComBaudRate = _wmServiceSettings.BaudRate;
+            WmTableChannelCount = _wmServiceSettings.TableChannelCount;
+            WmQueryDeviceId = string.IsNullOrWhiteSpace(_wmServiceSettings.QueryDeviceId)
+                ? "(自动使用首个设备)"
+                : _wmServiceSettings.QueryDeviceId;
+            WmServiceIsSimulated = _wmServiceSettings.IsSimulated;
 
             var states = _pdDriverManager.ConnectionStates;
             int connectedCount = states.Count(kvp => kvp.Value);

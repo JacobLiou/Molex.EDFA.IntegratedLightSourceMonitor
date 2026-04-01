@@ -20,7 +20,7 @@
                 <TextBlock Text="类型:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <RadioButton x:Name="RbPower" Content="功率" IsChecked="True" GroupName="DataType"
                              Foreground="#E8E8F0" Margin="0,0,8,0" Checked="DataTypeRadio_Checked"/>
-                <RadioButton x:Name="RbWavelength" Content="波长" GroupName="DataType"
+                <RadioButton x:Name="RbWavelength" Content="波长（标称）" GroupName="DataType"
                              Foreground="#E8E8F0" Margin="0,0,16,0" Checked="DataTypeRadio_Checked"/>
 
                 <Button Content="🔄 刷新" Command="{Binding LoadDataCommand}" Margin="0,0,8,0"

@@ -2,12 +2,49 @@ namespace LightSourceMonitor.Models;
 
 public class WavelengthServiceSettings
 {
+    /// <summary>
+    /// Driver mode: Socket | SimulatedCom
+    /// </summary>
+    public string Mode { get; set; } = "Socket";
+
+    /// <summary>
+    /// COM port name used by simulated COM driver.
+    /// </summary>
+    public string ComPort { get; set; } = "COM9";
+
+    /// <summary>
+    /// COM baud rate used by simulated COM driver.
+    /// </summary>
+    public int BaudRate { get; set; } = 115200;
+
     public string Host { get; set; } = "172.16.148.124";
     public int Port { get; set; } = 8003;
     public int TimeoutMs { get; set; } = 5000;
+    public int Timeout { get; set; } = 5000;
+
+    /// <summary>First argument to wavelength service QUERY (device id). Empty = first PD DeviceSN from Driver.Devices.</summary>
+    public string QueryDeviceId { get; set; } = "";
+
+    /// <summary>Number of WM channel indices 0..N-1 to query for the overview table.</summary>
+    public int TableChannelCount { get; set; } = 8;
+
     public bool IsSimulated { get; set; } = true;
     public double SimulatedWavelengthMin { get; set; } = 1310.0;
     public double SimulatedWavelengthMax { get; set; } = 1312.0;
     public double SimulatedPowerMin { get; set; } = -10.0;
     public double SimulatedPowerMax { get; set; } = -7.5;
+
+    /// <summary>Per-read delay for simulated COM response (ms).</summary>
+    public int SimulatedComReadDelayMs { get; set; } = 20;
+
+    /// <summary>Channel-to-channel wavelength spacing in nm for simulated COM mode.</summary>
+    public double SimulatedChannelSpacingNm { get; set; } = 0.05;
+
+    /// <summary>Random wavelength jitter amplitude in nm for simulated COM mode.</summary>
+    public double SimulatedComNoiseNm { get; set; } = 0.01;
+
+    /// <summary>Random power jitter amplitude in dBm for simulated COM mode.</summary>
+    public double SimulatedComNoiseDbm { get; set; } = 0.3;
+
+    public int GetEffectiveTimeoutMs() => TimeoutMs > 0 ? TimeoutMs : Timeout;
 }

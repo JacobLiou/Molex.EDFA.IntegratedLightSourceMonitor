@@ -40,6 +40,7 @@ public class AcquisitionService : IAcquisitionService
     public bool IsPdConnected => _pdConnected;
     public IReadOnlyDictionary<string, bool> PdDeviceStates => _deviceStates;
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
+    public event Action<WavelengthTableSnapshot>? WavelengthTableUpdated;
     public event Action<IReadOnlyDictionary<string, WbaTelemetrySnapshot>>? WbaTelemetryAcquired;
     public event Action<bool>? PdConnectionChanged;
     public event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;
@@ -70,6 +71,20 @@ public class AcquisitionService : IAcquisitionService
         _wmServiceDriver = wmServiceDriver;
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
+
+        // Mode-based defaults:
+        // - SimulatedCom: fast feedback for demo/verification.
+        // - Other modes (real/sock/com): minute-level WM sweep cadence.
+        if (string.Equals(_wmServiceSettings.Mode, "SimulatedCom", StringComparison.OrdinalIgnoreCase))
+        {
+            SamplingIntervalMs = 1000;
+            WmSweepEveryN = 1;
+        }
+        else
+        {
+            SamplingIntervalMs = 5000;
+            WmSweepEveryN = 36; // 5000ms * 36 ~= 3 minutes.
+        }
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -191,9 +206,8 @@ public class AcquisitionService : IAcquisitionService
                 using var scope = _services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
 
-                // Skip WM query on first cycle so PD/WBA can paint online state quickly.
-                bool doWmSweep = _sampleCount > 0 && (_sampleCount % wmSweepEveryN == 0);
-                bool disableWmForCurrentCycle = false;
+                // Sweep WM table at configured cadence; allows first-cycle data when wmSweepEveryN=1.
+                bool doWmSweep = _sampleCount % wmSweepEveryN == 0;
                 var batch = new Dictionary<int, MeasurementRecord>();
                 var wbaBatch = new Dictionary<string, WbaTelemetrySnapshot>(StringComparer.OrdinalIgnoreCase);
 
@@ -230,35 +244,32 @@ public class AcquisitionService : IAcquisitionService
                         double power = powers != null && ch.ChannelIndex >= 0 && ch.ChannelIndex < powers.Length
                             ? powers[ch.ChannelIndex]
                             : 0;
-                        double wavelength = ch.SpecWavelength;
-
-                        if (doWmSweep && !disableWmForCurrentCycle)
-                        {
-                            try
-                            {
-                                var (wmWavelength, wmPower) = await _wmServiceDriver.GetWavelengthAsync(deviceSn, i);
-                                wavelength = wmWavelength;
-                                // Note: wmPower is from service, but we use PD power for consistency
-                            }
-                            catch (Exception ex)
-                            {
-                                disableWmForCurrentCycle = true;
-                                _logger.LogWarning(ex, "WM service query failed for channel {Ch}, using spec value", ch.ChannelName);
-                            }
-                        }
 
                         var record = new MeasurementRecord
                         {
                             ChannelId = ch.Id,
                             Timestamp = now,
                             Power = power,
-                            Wavelength = wavelength
+                            Wavelength = ch.SpecWavelength
                         };
                         batch[ch.Id] = record;
                     }
                 }
 
                 UpdateAndPublishPdStates();
+
+                WavelengthTableSnapshot? wlTable = null;
+                if (doWmSweep)
+                {
+                    try
+                    {
+                        wlTable = await BuildWavelengthTableSnapshotAsync(now, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Wavelength table sweep failed");
+                    }
+                }
 
                 // Separate WBA acquisition loop (independent from PD)
                 foreach (var wbaSn in _wbaDeviceSns)
@@ -269,15 +280,20 @@ public class AcquisitionService : IAcquisitionService
 
                 if (batch.Count == 0)
                 {
+                    if (wlTable != null)
+                        WavelengthTableUpdated.SafeInvoke(wlTable, nameof(WavelengthTableUpdated));
                     if (wbaBatch.Count > 0)
                         WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
+                    _sampleCount++;
                     await Task.Delay(samplingIntervalMs, ct);
                     continue;
                 }
 
                 // Push UI updates first; DB and alarm processing should not block dashboard refresh.
                 DataAcquired.SafeInvoke(batch, nameof(DataAcquired));
+                if (wlTable != null)
+                    WavelengthTableUpdated.SafeInvoke(wlTable, nameof(WavelengthTableUpdated));
                 if (wbaBatch.Count > 0)
                     WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
@@ -357,6 +373,44 @@ public class AcquisitionService : IAcquisitionService
             if (string.IsNullOrWhiteSpace(device.UsbAddress))
                 throw new InvalidOperationException($"UsbAddress must not be empty for device {device.DeviceSN}");
         }
+    }
+
+    private async Task<WavelengthTableSnapshot> BuildWavelengthTableSnapshotAsync(DateTime now, CancellationToken ct)
+    {
+        var n = Math.Clamp(_wmServiceSettings.TableChannelCount, 1, 64);
+        var effective = _driverSettings.GetEffectiveDevices();
+        var deviceId = string.IsNullOrWhiteSpace(_wmServiceSettings.QueryDeviceId)
+            ? effective.FirstOrDefault()?.DeviceSN ?? "WM"
+            : _wmServiceSettings.QueryDeviceId.Trim();
+
+        var rows = new List<WavelengthTableRow>(n);
+        for (var j = 0; j < n; j++)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var (wl, p) = await _wmServiceDriver.GetWavelengthAsync(deviceId, j);
+                rows.Add(new WavelengthTableRow
+                {
+                    ChannelIndex = j,
+                    WavelengthNm = wl,
+                    WmPowerDbm = p,
+                    IsValid = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "WM table query failed for device {Device} index {Index}", deviceId, j);
+                rows.Add(new WavelengthTableRow { ChannelIndex = j, IsValid = false });
+            }
+        }
+
+        return new WavelengthTableSnapshot
+        {
+            QueryDeviceId = deviceId,
+            Timestamp = now,
+            Rows = rows
+        };
     }
 
     private void UpdateAndPublishPdStates(bool forceNotify = false)

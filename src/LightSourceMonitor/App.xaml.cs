@@ -85,6 +85,7 @@ public partial class App : Application
                     ServiceLifetime.Transient);
 
                 var driverSettings = context.Configuration.GetSection("Driver").Get<DriverSettings>() ?? new DriverSettings();
+                var wmServiceSettings = context.Configuration.GetSection("WavelengthService").Get<WavelengthServiceSettings>() ?? new WavelengthServiceSettings();
                 var validation = driverSettings.ValidateConfiguration();
                 var effectiveDevices = driverSettings.GetEffectiveDevices();
                 var enabledChannelCount = effectiveDevices.Sum(d => d.Channels.Count(c => c.IsEnabled));
@@ -126,7 +127,16 @@ public partial class App : Application
                 services.AddSingleton<Func<IPdArrayDriver>>(sp => () => sp.GetRequiredService<IPdArrayDriver>());
                 services.AddSingleton<IPdDriverManager, PdDriverManager>();
 
-                services.AddSingleton<IWavelengthServiceDriver, WavelengthServiceDriver>();
+                if (string.Equals(wmServiceSettings.Mode, "SimulatedCom", StringComparison.OrdinalIgnoreCase))
+                {
+                    services.AddSingleton<IWavelengthServiceDriver, SimulatedComWavelengthServiceDriver>();
+                    Log.Information("Wavelength service mode: SimulatedCom ({ComPort}@{BaudRate})", wmServiceSettings.ComPort, wmServiceSettings.BaudRate);
+                }
+                else
+                {
+                    services.AddSingleton<IWavelengthServiceDriver, WavelengthServiceDriver>();
+                    Log.Information("Wavelength service mode: Socket ({Host}:{Port})", wmServiceSettings.Host, wmServiceSettings.Port);
+                }
                 services.AddSingleton<IAlarmService, AlarmService>();
                 services.AddSingleton<IChannelCatalog, ChannelCatalog>();
                 services.AddSingleton<IEmailService, EmailService>();

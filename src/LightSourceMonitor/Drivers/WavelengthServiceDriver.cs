@@ -40,7 +40,7 @@ public class WavelengthServiceDriver : IWavelengthServiceDriver
                 _tcpClient = new TcpClient();
             }
 
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_settings.TimeoutMs)))
+            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_settings.GetEffectiveTimeoutMs())))
             {
                 try
                 {
@@ -72,7 +72,7 @@ public class WavelengthServiceDriver : IWavelengthServiceDriver
         }
     }
 
-    public async Task<bool> DisconnectAsync()
+    public Task<bool> DisconnectAsync()
     {
         try
         {
@@ -86,12 +86,12 @@ public class WavelengthServiceDriver : IWavelengthServiceDriver
 
             IsConnected = false;
             _logger.LogInformation("Disconnected from WavelengthService");
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error during disconnect");
-            return false;
+            return Task.FromResult(false);
         }
     }
 
@@ -124,9 +124,9 @@ public class WavelengthServiceDriver : IWavelengthServiceDriver
             var buffer = new byte[256];
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_settings.TimeoutMs)))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(_settings.GetEffectiveTimeoutMs())))
                 {
-                    int bytesRead = await _networkStream.ReadAsync(buffer, 0, buffer.Length, cts.Token);
+                    int bytesRead = await _networkStream!.ReadAsync(buffer, 0, buffer.Length, cts.Token);
                     if (bytesRead <= 0)
                     {
                         _logger.LogWarning("No data received from WavelengthService");

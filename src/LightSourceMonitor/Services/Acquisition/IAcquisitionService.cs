@@ -11,6 +11,7 @@ public interface IAcquisitionService
     int WmSweepEveryN { get; set; }
     int DbWriteEveryN { get; set; }
     event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
+    event Action<WavelengthTableSnapshot>? WavelengthTableUpdated;
     event Action<IReadOnlyDictionary<string, WbaTelemetrySnapshot>>? WbaTelemetryAcquired;
     event Action<bool>? PdConnectionChanged;
     event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;

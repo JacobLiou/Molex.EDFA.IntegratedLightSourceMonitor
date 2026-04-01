@@ -9,12 +9,14 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Device Containers: PD left (2/3) + WBA right (1/3) -->
-        <Grid Grid.Row="0" Margin="0,0,0,12">
+        <!-- Device Containers: PD | Wavelength table | WBA -->
+        <Grid Grid.Row="0" Margin="0,0,0,5">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="10"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="235"/>
             </Grid.ColumnDefinitions>
 
             <!-- PD Device List -->
@@ -87,7 +89,7 @@
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type vm:ChannelCardViewModel}">
-                                                            <Border Width="158" Margin="0,0,8,8" Padding="12"
+                                                            <Border Width="158" Margin="0,0,8,8" Padding="8"
                                                                     CornerRadius="6" Cursor="Hand" BorderThickness="1">
                                                                 <Border.Style>
                                                                     <Style TargetType="Border">
@@ -141,7 +143,6 @@
                                                                         </TextBlock.Style>
                                                                     </TextBlock>
                                                                     <TextBlock Text="{Binding Unit}" Foreground="#55556A" FontSize="13" Margin="0,2,0,0"/>
-                                                                    <TextBlock Text="{Binding WavelengthDisplay, StringFormat='波长: {0} nm'}" Foreground="#9898B0" FontSize="11" Margin="0,4,0,0"/>
                                                                 </StackPanel>
                                                             </Border>
                                                         </DataTemplate>
@@ -157,8 +158,80 @@
                 </Grid>
             </Border>
 
-            <!-- WBA Device List -->
+            <!-- Wavelength meter (multi-channel table) -->
             <Border Grid.Column="2" Background="#23233D" CornerRadius="8" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="4,2,4,10">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="波长计（多路）" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
+                            <TextBlock Text="{Binding WavelengthTableSubtitle}" Foreground="#9898B0" FontSize="11" FontFamily="Consolas" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <Border Background="#1B1B2F" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <TextBlock Foreground="#9898B0" FontFamily="Consolas"
+                                       Text="{Binding WavelengthRows.Count, StringFormat=路数: {0}}"/>
+                        </Border>
+                    </DockPanel>
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding WavelengthRows}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserResizeRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              Background="#1B1B2F"
+                              Foreground="#E8E8F0"
+                              BorderThickness="0"
+                              RowBackground="#23233D"
+                              AlternatingRowBackground="#1B1B2F"
+                              HorizontalGridLinesBrush="#2A2A3E"
+                              VerticalGridLinesBrush="#2A2A3E"
+                              ColumnHeaderHeight="32">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#1B1B2F"/>
+                                <Setter Property="Foreground" Value="#9898B0"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Padding" Value="8,6"/>
+                                <Setter Property="BorderBrush" Value="#2A2A3E"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Padding" Value="8,6"/>
+                                <Setter Property="Foreground" Value="#E8E8F0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridCell">
+                                            <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                                <ContentPresenter VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </DataGrid.CellStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="序号" Binding="{Binding ChannelIndex}" Width="56"/>
+                            <DataGridTextColumn Header="波长 nm" Binding="{Binding WavelengthDisplay}" Width="*"/>
+                            <DataGridTextColumn Header="功率 dBm" Binding="{Binding PowerDisplay}" Width="*"/>
+                            <DataGridTextColumn Header="更新时间" Binding="{Binding LastUpdate}" Width="88"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- WBA Device List -->
+            <Border Grid.Column="4" Background="#23233D" CornerRadius="8" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>

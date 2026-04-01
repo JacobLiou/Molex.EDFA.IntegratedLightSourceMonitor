@@ -20,128 +20,214 @@
             <!-- Device Management Tab -->
             <TabItem Header="设备管理">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="0,12,0,0">
-                        <!-- Driver Status -->
-                        <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="驱动状态" Style="{StaticResource SectionHeader}"/>
-                                <Grid Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="160"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
+                    <Border Background="#23233D" CornerRadius="8" Padding="14" Margin="0,12,0,0">
+                        <Expander Header="设备管理总览" IsExpanded="True" Foreground="#E8E8F0" Background="Transparent">
+                            <StackPanel Margin="0,10,0,0">
+                                <Expander Header="驱动状态" IsExpanded="True" Foreground="#E8E8F0" Background="Transparent">
+                                    <Border Background="#1B1B2F" CornerRadius="8" Padding="16" Margin="0,8,0,8">
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="160"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
 
-                                    <TextBlock Text="运行模式:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding DriverMode}" Foreground="#7C4DFF" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                            <TextBlock Text="运行模式:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding DriverMode}" Foreground="#7C4DFF" FontWeight="SemiBold" Margin="0,0,0,6"/>
 
-                                    <TextBlock Grid.Row="1" Text="PD阵列驱动:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PdDriverStatus}" Foreground="#00E676" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="PD阵列驱动:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PdDriverStatus}" Foreground="#00E676" Margin="0,0,0,6"/>
 
-                                    <TextBlock Grid.Row="2" Text="波长计驱动:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WmDriverStatus}" Foreground="#00E676" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="2" Text="波长计驱动:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WmDriverStatus}" Foreground="#00E676" Margin="0,0,0,6"/>
 
-                                    <TextBlock Grid.Row="3" Text="数据采集:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
-                                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
-                                        <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
-                                            <Ellipse.Style>
-                                                <Style TargetType="Ellipse">
-                                                    <Setter Property="Fill" Value="#616161"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsAcquisitionRunning}" Value="True">
-                                                            <Setter Property="Fill" Value="#00E676"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Ellipse.Style>
-                                        </Ellipse>
-                                        <TextBlock Foreground="#E8E8F0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="已停止"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsAcquisitionRunning}" Value="True">
-                                                            <Setter Property="Text" Value="运行中"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Grid>
+                                            <TextBlock Grid.Row="3" Text="数据采集:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,0,6"/>
+                                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                                                <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="#616161"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsAcquisitionRunning}" Value="True">
+                                                                    <Setter Property="Fill" Value="#00E676"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Foreground="#E8E8F0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="已停止"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsAcquisitionRunning}" Value="True">
+                                                                    <Setter Property="Text" Value="运行中"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </Expander>
+
+                                <Expander Header="PD 通道配置" IsExpanded="False" Foreground="#E8E8F0" Background="Transparent">
+                                    <Border Background="#1B1B2F" CornerRadius="8" Padding="16" Margin="0,8,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Channels.Count, StringFormat='共 {0} 个通道'}" Foreground="#9898B0" Margin="0,0,0,12"/>
+                                            <DataGrid ItemsSource="{Binding Channels}" AutoGenerateColumns="False"
+                                                      IsReadOnly="True" Background="Transparent" Foreground="#E8E8F0"
+                                                      BorderThickness="0" GridLinesVisibility="Horizontal"
+                                                      HorizontalGridLinesBrush="#334466"
+                                                      RowBackground="#23233D" AlternatingRowBackground="#1B1B2F"
+                                                      HeadersVisibility="Column" CanUserResizeRows="False"
+                                                      MaxHeight="320">
+                                                <DataGrid.ColumnHeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader">
+                                                        <Setter Property="Background" Value="#1B1B2F"/>
+                                                        <Setter Property="Foreground" Value="#9898B0"/>
+                                                        <Setter Property="Padding" Value="10,8"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        <Setter Property="BorderBrush" Value="#334466"/>
+                                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                                    </Style>
+                                                </DataGrid.ColumnHeaderStyle>
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="设备SN" Binding="{Binding DeviceSN}" Width="120">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="100"/>
+                                                    <DataGridTextColumn Header="波长 (nm)" Binding="{Binding SpecWavelength, StringFormat='{}{0:F1}'}" Width="90">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="功率Min" Binding="{Binding SpecPowerMin, StringFormat='{}{0:F1}'}" Width="80">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="功率Max" Binding="{Binding SpecPowerMax, StringFormat='{}{0:F1}'}" Width="80">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="告警Δ" Binding="{Binding AlarmDelta, StringFormat='{}{0:F2}'}" Width="70">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridCheckBoxColumn Header="启用" Binding="{Binding IsEnabled}" Width="50"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </StackPanel>
+                                    </Border>
+                                </Expander>
+
+                                <Expander Header="WM 配置" IsExpanded="False" Foreground="#E8E8F0" Background="Transparent">
+                                    <Border Background="#1B1B2F" CornerRadius="8" Padding="16" Margin="0,8,0,8">
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="180"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="WM XML路径:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding WmConfigXmlPath}" Foreground="#E8E8F0" Margin="0,0,0,6" FontFamily="Consolas"/>
+
+                                            <TextBlock Grid.Row="1" Text="服务模式:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WmServiceMode}" Foreground="#7C4DFF" Margin="0,0,0,6" FontWeight="SemiBold"/>
+
+                                            <TextBlock Grid.Row="2" Text="模拟开关:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WmServiceIsSimulated}" Foreground="#E8E8F0" Margin="0,0,0,6"/>
+
+                                            <TextBlock Grid.Row="3" Text="模拟COM口:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding WmComPort}" Foreground="#E8E8F0" Margin="0,0,0,6" FontFamily="Consolas"/>
+
+                                            <TextBlock Grid.Row="4" Text="波特率:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding WmComBaudRate}" Foreground="#E8E8F0" Margin="0,0,0,6" FontFamily="Consolas"/>
+
+                                            <TextBlock Grid.Row="5" Text="表格通道数:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding WmTableChannelCount}" Foreground="#E8E8F0" Margin="0,0,0,6" FontFamily="Consolas"/>
+
+                                            <TextBlock Grid.Row="6" Text="查询设备ID:" Foreground="#9898B0" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding WmQueryDeviceId}" Foreground="#E8E8F0" Margin="0,0,0,6" FontFamily="Consolas"/>
+                                        </Grid>
+                                    </Border>
+                                </Expander>
+
+                                <Expander Header="WBA 设备配置" IsExpanded="False" Foreground="#E8E8F0" Background="Transparent">
+                                    <Border Background="#1B1B2F" CornerRadius="8" Padding="16" Margin="0,8,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding WbaDevices.Count, StringFormat='共 {0} 个WBA设备'}" Foreground="#9898B0" Margin="0,0,0,12"/>
+                                            <DataGrid ItemsSource="{Binding WbaDevices}" AutoGenerateColumns="False"
+                                                      IsReadOnly="True" Background="Transparent" Foreground="#E8E8F0"
+                                                      BorderThickness="0" GridLinesVisibility="Horizontal"
+                                                      HorizontalGridLinesBrush="#334466"
+                                                      RowBackground="#23233D" AlternatingRowBackground="#1B1B2F"
+                                                      HeadersVisibility="Column" CanUserResizeRows="False"
+                                                      MaxHeight="220">
+                                                <DataGrid.ColumnHeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader">
+                                                        <Setter Property="Background" Value="#1B1B2F"/>
+                                                        <Setter Property="Foreground" Value="#9898B0"/>
+                                                        <Setter Property="Padding" Value="10,8"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        <Setter Property="BorderBrush" Value="#334466"/>
+                                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                                    </Style>
+                                                </DataGrid.ColumnHeaderStyle>
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="设备SN" Binding="{Binding DeviceSN}" Width="*">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="COM口" Binding="{Binding ComPort}" Width="130">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridCheckBoxColumn Header="启用" Binding="{Binding Enabled}" Width="70"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </StackPanel>
+                                    </Border>
+                                </Expander>
                             </StackPanel>
-                        </Border>
-
-                        <!-- Channel List -->
-                        <Border Background="#23233D" CornerRadius="8" Padding="20">
-                            <StackPanel>
-                                <TextBlock Text="激光通道配置" Style="{StaticResource SectionHeader}"/>
-                                <TextBlock Text="{Binding Channels.Count, StringFormat='共 {0} 个通道'}" Foreground="#9898B0" Margin="0,0,0,12"/>
-                                <DataGrid ItemsSource="{Binding Channels}" AutoGenerateColumns="False"
-                                          IsReadOnly="True" Background="Transparent" Foreground="#E8E8F0"
-                                          BorderThickness="0" GridLinesVisibility="Horizontal"
-                                          HorizontalGridLinesBrush="#334466"
-                                          RowBackground="#23233D" AlternatingRowBackground="#1B1B2F"
-                                          HeadersVisibility="Column" CanUserResizeRows="False"
-                                          MaxHeight="400">
-                                    <DataGrid.ColumnHeaderStyle>
-                                        <Style TargetType="DataGridColumnHeader">
-                                            <Setter Property="Background" Value="#1B1B2F"/>
-                                            <Setter Property="Foreground" Value="#9898B0"/>
-                                            <Setter Property="Padding" Value="10,8"/>
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                            <Setter Property="BorderBrush" Value="#334466"/>
-                                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                        </Style>
-                                    </DataGrid.ColumnHeaderStyle>
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="设备SN" Binding="{Binding DeviceSN}" Width="120">
-                                            <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="FontFamily" Value="Consolas"/>
-                                                </Style>
-                                            </DataGridTextColumn.ElementStyle>
-                                        </DataGridTextColumn>
-                                        <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="100"/>
-                                        <DataGridTextColumn Header="波长 (nm)" Binding="{Binding SpecWavelength, StringFormat='{}{0:F1}'}" Width="90">
-                                            <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="FontFamily" Value="Consolas"/>
-                                                </Style>
-                                            </DataGridTextColumn.ElementStyle>
-                                        </DataGridTextColumn>
-                                        <DataGridTextColumn Header="功率Min" Binding="{Binding SpecPowerMin, StringFormat='{}{0:F1}'}" Width="80">
-                                            <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="FontFamily" Value="Consolas"/>
-                                                </Style>
-                                            </DataGridTextColumn.ElementStyle>
-                                        </DataGridTextColumn>
-                                        <DataGridTextColumn Header="功率Max" Binding="{Binding SpecPowerMax, StringFormat='{}{0:F1}'}" Width="80">
-                                            <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="FontFamily" Value="Consolas"/>
-                                                </Style>
-                                            </DataGridTextColumn.ElementStyle>
-                                        </DataGridTextColumn>
-                                        <DataGridTextColumn Header="告警Δ" Binding="{Binding AlarmDelta, StringFormat='{}{0:F2}'}" Width="70">
-                                            <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="FontFamily" Value="Consolas"/>
-                                                </Style>
-                                            </DataGridTextColumn.ElementStyle>
-                                        </DataGridTextColumn>
-                                        <DataGridCheckBoxColumn Header="启用" Binding="{Binding IsEnabled}" Width="50"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                        </Expander>
+                    </Border>
                 </ScrollViewer>
             </TabItem>
 

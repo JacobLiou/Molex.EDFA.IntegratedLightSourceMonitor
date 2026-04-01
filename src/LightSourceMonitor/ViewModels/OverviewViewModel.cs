@@ -26,26 +26,21 @@ public partial class ChannelCardViewModel : ObservableObject
     [ObservableProperty] private double _maxValue = double.MinValue;
     [ObservableProperty] private double _minValue = double.MaxValue;
     [ObservableProperty] private string _lastUpdate = "--";
-    [ObservableProperty] private double _wavelength;
     [ObservableProperty] private bool _isOnline = false;
     [ObservableProperty] private string _displayValue = "---";
-    [ObservableProperty] private string _wavelengthDisplay = "---";
 
     public void SetOffline()
     {
         IsOnline = false;
         StatusColor = "#616161";
         DisplayValue = "---";
-        WavelengthDisplay = "---";
     }
 
-    public void UpdateWithMeasurement(double power, double wavelength, double alarmDelta)
+    public void UpdateWithMeasurement(double power, double alarmDelta)
     {
         IsOnline = true;
         CurrentValue = power;
-        Wavelength = wavelength;
         DisplayValue = power.ToString("F2");
-        WavelengthDisplay = wavelength.ToString("F2");
 
         if (power > MaxValue) MaxValue = power;
         if (power < MinValue) MinValue = power;
@@ -60,6 +55,15 @@ public partial class ChannelCardViewModel : ObservableObject
 
         LastUpdate = DateTime.Now.ToString("HH:mm:ss");
     }
+}
+
+public partial class WavelengthRowViewModel : ObservableObject
+{
+    [ObservableProperty] private int _channelIndex;
+    [ObservableProperty] private string _wavelengthDisplay = "---";
+    [ObservableProperty] private string _powerDisplay = "---";
+    [ObservableProperty] private string _lastUpdate = "--";
+    [ObservableProperty] private bool _isOnline;
 }
 
 public partial class WbaMetricViewModel : ObservableObject
@@ -107,8 +111,10 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int _normalCount;
     [ObservableProperty] private int _warningCount;
     [ObservableProperty] private int _offlineCount;
+    [ObservableProperty] private string _wavelengthTableSubtitle = "—";
 
     public ObservableCollection<DeviceGroupViewModel> DeviceGroups { get; } = new();
+    public ObservableCollection<WavelengthRowViewModel> WavelengthRows { get; } = new();
     public ObservableCollection<WbaDeviceGroupViewModel> WbaDeviceGroups { get; } = new();
     public ObservableCollection<AlarmItemViewModel> RecentAlarms { get; } = new();
 
@@ -121,6 +127,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _driverSettings = driverOptions.Value;
 
         _acquisitionService.DataAcquired += OnDataAcquired;
+        _acquisitionService.WavelengthTableUpdated += OnWavelengthTableUpdated;
         _acquisitionService.WbaTelemetryAcquired += OnWbaTelemetryAcquired;
         _acquisitionService.PdConnectionChanged += OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged += OnPdDeviceConnectionChanged;
@@ -252,10 +259,33 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
             {
                 if (_channelMap.TryGetValue(kvp.Key, out var entry))
                 {
-                    entry.card.UpdateWithMeasurement(kvp.Value.Power, kvp.Value.Wavelength, entry.alarmDelta);
+                    entry.card.UpdateWithMeasurement(kvp.Value.Power, entry.alarmDelta);
                 }
             }
             RefreshKpi();
+        });
+    }
+
+    private void OnWavelengthTableUpdated(WavelengthTableSnapshot snapshot)
+    {
+        AsyncHelper.SafeDispatcherInvoke(() =>
+        {
+            WavelengthTableSubtitle = string.IsNullOrEmpty(snapshot.QueryDeviceId)
+                ? "—"
+                : $"QUERY {snapshot.QueryDeviceId}";
+
+            WavelengthRows.Clear();
+            foreach (var r in snapshot.Rows)
+            {
+                WavelengthRows.Add(new WavelengthRowViewModel
+                {
+                    ChannelIndex = r.ChannelIndex,
+                    WavelengthDisplay = r.IsValid ? r.WavelengthNm.ToString("F3") : "---",
+                    PowerDisplay = r.IsValid ? r.WmPowerDbm.ToString("F2") : "---",
+                    LastUpdate = snapshot.Timestamp.ToString("HH:mm:ss"),
+                    IsOnline = r.IsValid
+                });
+            }
         });
     }
 
@@ -342,6 +372,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _acquisitionService.DataAcquired -= OnDataAcquired;
+        _acquisitionService.WavelengthTableUpdated -= OnWavelengthTableUpdated;
         _acquisitionService.WbaTelemetryAcquired -= OnWbaTelemetryAcquired;
         _acquisitionService.PdConnectionChanged -= OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged -= OnPdDeviceConnectionChanged;
