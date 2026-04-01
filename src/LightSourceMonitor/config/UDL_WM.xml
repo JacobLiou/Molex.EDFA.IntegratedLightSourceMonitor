@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<MIMSUDL language="en" APP="" CRC="5A43FB2A">
+  <Property DevTypeCount="1" Date="2024/1/31" RDS="0" User="28130">
+    <DevType Type="WM">
+      <Device DevID="1" Combo="0" Online="1" DevKey1="0" DevKey2="NA" DevKey3="NA" DevKey4="NA" DevKey5="NA">
+        <Info MainFrame="AQ615X" Model="AQ6150" />
+        <Comm ComType="GPIB" ComKey1="0" ComKey2="20" ComKey3="0" ComKey4="10" ComKey5="0" />
+        <Mapping GUID="1" Name="wmm" Slot="0" Channel="1" Model="AQ6150" />
+      </Device>
+    </DevType>
+  </Property>
+</MIMSUDL>

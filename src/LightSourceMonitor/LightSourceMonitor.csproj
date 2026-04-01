@@ -51,6 +51,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="config\UDL_WM.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="monitor.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
