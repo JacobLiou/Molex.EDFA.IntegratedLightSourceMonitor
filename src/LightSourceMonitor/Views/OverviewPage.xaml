@@ -57,9 +57,6 @@
                                                             </Ellipse.Style>
                                                         </Ellipse>
                                                         <TextBlock Text="{Binding DeviceName}" FontSize="16" FontWeight="SemiBold" Foreground="#E8E8F0"/>
-                                                        <TextBlock Text=" (SN: " Foreground="#9898B0"/>
-                                                        <TextBlock Text="{Binding DeviceSn}" Foreground="#9898B0" FontFamily="Consolas"/>
-                                                        <TextBlock Text=")" Foreground="#9898B0"/>
                                                     </StackPanel>
                                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                         <TextBlock Margin="0,0,12,0" Foreground="#9898B0" FontFamily="Consolas"

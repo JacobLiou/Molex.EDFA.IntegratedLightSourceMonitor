@@ -171,7 +171,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
             {
                 var group = new DeviceGroupViewModel
                 {
-                    DeviceName = $"PD Array ({g.Key})",
+                    DeviceName = g.Key,
                     DeviceSn = g.Key,
                     IsOnline = _acquisitionService.IsPdConnected
                 };
