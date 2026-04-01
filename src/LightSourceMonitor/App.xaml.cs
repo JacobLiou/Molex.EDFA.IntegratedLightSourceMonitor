@@ -78,6 +78,7 @@ public partial class App : Application
             {
                 services.Configure<DriverSettings>(context.Configuration.GetSection("Driver"));
                 services.Configure<WavelengthServiceSettings>(context.Configuration.GetSection("WavelengthService"));
+                services.Configure<AlarmEmailOptions>(context.Configuration.GetSection("AlarmEmail"));
                 services.AddHttpClient(nameof(EmailService));
 
                 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "monitor.db");

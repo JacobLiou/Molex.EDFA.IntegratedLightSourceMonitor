@@ -1,30 +1,47 @@
 using LightSourceMonitor.Models;
+using LightSourceMonitor.Services.Channels;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace LightSourceMonitor.Drivers;
 
-public class SimulatedPdArrayDriver : IPdArrayDriver
+/// <summary>
+/// Simulated PD array: power is generated around each channel's spec center from <see cref="IChannelCatalog"/>,
+/// matching <see cref="Services.Alarm.AlarmService"/> (|power - center| vs AlarmDelta). Baseline noise is small; rare spikes exceed the threshold.
+/// </summary>
+public sealed class SimulatedPdArrayDriver : IPdArrayDriver
 {
     private readonly ILogger<SimulatedPdArrayDriver> _logger;
+    private readonly IChannelCatalog _channelCatalog;
+    private readonly DriverSettings _driverSettings;
     private readonly Random _rng = new();
-    private readonly List<double> _baselines = new();
     private DateTime _startTime = DateTime.UtcNow;
     private bool _initialized;
 
     public bool IsOpen { get; private set; }
     public string DeviceSN { get; private set; } = "";
 
-    public SimulatedPdArrayDriver(ILogger<SimulatedPdArrayDriver> logger)
+    public SimulatedPdArrayDriver(
+        ILogger<SimulatedPdArrayDriver> logger,
+        IChannelCatalog channelCatalog,
+        IOptions<DriverSettings> driverOptions)
     {
         _logger = logger;
+        _channelCatalog = channelCatalog;
+        _driverSettings = driverOptions.Value;
     }
 
     public bool Open(string instanceIdSubstring)
     {
-        DeviceSN = string.IsNullOrWhiteSpace(instanceIdSubstring) ? "SIM-PD-001" : instanceIdSubstring;
+        var id = string.IsNullOrWhiteSpace(instanceIdSubstring) ? "SIM-PD-001" : instanceIdSubstring.Trim();
+        var dev = _driverSettings.GetEffectiveDevices().FirstOrDefault(d => d.Enabled && (
+            string.Equals(d.UsbAddress, id, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(d.DeviceSN, id, StringComparison.OrdinalIgnoreCase)));
+
+        DeviceSN = dev?.DeviceSN ?? id;
         IsOpen = true;
         _startTime = DateTime.UtcNow;
-        _logger.LogInformation("Simulated PD Array opened: {SN}", DeviceSN);
+        _logger.LogInformation("Simulated PD Array opened: catalog key {DeviceSN} (open id {OpenId})", DeviceSN, id);
         return true;
     }
 
@@ -42,24 +59,36 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
         if (!IsOpen || !_initialized) return null;
 
         int count = Math.Max(1, channelCount);
-        EnsureBaselineCount(count);
-
         var powers = new double[count];
         double elapsed = (DateTime.UtcNow - _startTime).TotalSeconds;
 
         for (int i = 0; i < count; i++)
         {
-            double slowDrift = 0.08 * Math.Sin(2 * Math.PI * elapsed / 180.0 + i * 0.7);
-            double fastDrift = 0.04 * Math.Sin(2 * Math.PI * elapsed / 30.0 + i * 1.3);
-            double noise = NextGaussian() * 0.03;
-            double spike = _rng.NextDouble() < 0.08
-                ? (_rng.NextDouble() > 0.5 ? 1 : -1) * (0.2 + _rng.NextDouble() * 0.25)
+            double center = GetSpecPowerCenterForChannel(i);
+            double slowDrift = 0.018 * Math.Sin(2 * Math.PI * elapsed / 180.0 + i * 0.7);
+            double fastDrift = 0.012 * Math.Sin(2 * Math.PI * elapsed / 30.0 + i * 1.3);
+            double noise = NextGaussian() * 0.032;
+            double spike = _rng.NextDouble() < 0.025
+                ? (_rng.NextDouble() > 0.5 ? 1 : -1) * (0.18 + _rng.NextDouble() * 0.22)
                 : 0;
 
-            powers[i] = Math.Round(_baselines[i] + slowDrift + fastDrift + noise + spike, 3);
+            powers[i] = Math.Round(center + slowDrift + fastDrift + noise + spike, 3);
         }
 
         return powers;
+    }
+
+    private double GetSpecPowerCenterForChannel(int channelIndex)
+    {
+        var ch = _channelCatalog.GetEnabledChannels()
+            .FirstOrDefault(c =>
+                string.Equals(c.DeviceSN, DeviceSN, StringComparison.OrdinalIgnoreCase) &&
+                c.ChannelIndex == channelIndex);
+
+        if (ch != null)
+            return (ch.SpecPowerMin + ch.SpecPowerMax) * 0.5;
+
+        return -9.0 - (channelIndex % 8) * 0.35;
     }
 
     public WbaTelemetrySnapshot? GetWbaTelemetry()
@@ -112,15 +141,5 @@ public class SimulatedPdArrayDriver : IPdArrayDriver
         double u1 = 1.0 - _rng.NextDouble();
         double u2 = _rng.NextDouble();
         return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
-    }
-
-    private void EnsureBaselineCount(int count)
-    {
-        while (_baselines.Count < count)
-        {
-            int idx = _baselines.Count;
-            // Spread channels around -8 dBm to -14 dBm for realistic multi-channel simulation.
-            _baselines.Add(-8.0 - (idx % 8) * 0.9 - (idx / 8) * 0.3);
-        }
     }
 }

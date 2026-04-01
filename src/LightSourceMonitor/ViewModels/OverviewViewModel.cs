@@ -45,11 +45,19 @@ public partial class ChannelCardViewModel : ObservableObject
         if (power > MaxValue) MaxValue = power;
         if (power < MinValue) MinValue = power;
 
-        Delta = MaxValue - MinValue;
-        if (Delta > alarmDelta)
-            StatusColor = "#FF1744";
-        else if (Delta > alarmDelta * 0.8)
-            StatusColor = "#FFAB00";
+        // Match AlarmService: deviation from spec center, not historical (max-min) range — the latter never shrinks so red borders stuck.
+        var deviation = Math.Abs(power - SpecValue);
+        Delta = deviation;
+
+        if (alarmDelta > 0)
+        {
+            if (deviation > alarmDelta)
+                StatusColor = "#FF1744";
+            else if (deviation > alarmDelta * 0.8)
+                StatusColor = "#FFAB00";
+            else
+                StatusColor = "#00E676";
+        }
         else
             StatusColor = "#00E676";
 

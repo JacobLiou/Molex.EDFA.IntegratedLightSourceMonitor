@@ -4,7 +4,7 @@ using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Email;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 
 namespace LightSourceMonitor.Services.Alarm;
 
@@ -13,21 +13,27 @@ public class AlarmService : IAlarmService
     private readonly IServiceProvider _services;
     private readonly ILogger<AlarmService> _logger;
     private readonly IEmailService _emailService;
-    private readonly ConcurrentDictionary<string, DateTime> _lastEmailSent = new();
+    private readonly AlarmEmailOptions _emailOptions;
+    private readonly Dictionary<string, DateTime> _lastEmailSentUtc = new(StringComparer.Ordinal);
+    private readonly object _emailThrottleLock = new();
 
     public event Action<AlarmEvent>? AlarmRaised;
 
-    public AlarmService(IServiceProvider services, ILogger<AlarmService> logger, IEmailService emailService)
+    public AlarmService(
+        IServiceProvider services,
+        ILogger<AlarmService> logger,
+        IEmailService emailService,
+        IOptions<AlarmEmailOptions> emailOptions)
     {
         _services = services;
         _logger = logger;
         _emailService = emailService;
+        _emailOptions = emailOptions.Value;
     }
 
     public async Task EvaluateAsync(MeasurementRecord record, LaserChannel channel)
     {
         var powerDelta = Math.Abs(record.Power - (channel.SpecPowerMin + channel.SpecPowerMax) / 2.0);
-        // Acquisition stores SpecWavelength in record.Wavelength; WM live readings are on the overview table only.
         var wlDelta = channel.SpecWavelength > 0
             ? Math.Abs(record.Wavelength - channel.SpecWavelength)
             : 0;
@@ -63,7 +69,11 @@ public class AlarmService : IAlarmService
             };
         }
 
-        if (alarm == null) return;
+        if (alarm == null)
+        {
+            ClearEmailThrottleForChannel(channel.Id);
+            return;
+        }
 
         try
         {
@@ -84,20 +94,49 @@ public class AlarmService : IAlarmService
         _ = TrySendEmailAsync(alarm, channel);
     }
 
+    private void ClearEmailThrottleForChannel(int channelId)
+    {
+        lock (_emailThrottleLock)
+        {
+            _lastEmailSentUtc.Remove(EmailThrottleKey(channelId, AlarmType.PowerDrift));
+            _lastEmailSentUtc.Remove(EmailThrottleKey(channelId, AlarmType.WavelengthDrift));
+        }
+    }
+
+    private static string EmailThrottleKey(int channelId, AlarmType type) => $"{channelId}_{type}";
+
+    private TimeSpan GetMinEmailInterval()
+    {
+        var m = _emailOptions.MinIntervalMinutes;
+        if (m < 1) m = 1;
+        if (m > 24 * 60) m = 24 * 60;
+        return TimeSpan.FromMinutes(m);
+    }
+
     private async Task TrySendEmailAsync(AlarmEvent alarm, LaserChannel channel)
     {
-        var key = $"{alarm.ChannelId}_{alarm.AlarmType}";
-        if (_lastEmailSent.TryGetValue(key, out var lastSent) &&
-            DateTime.Now - lastSent < TimeSpan.FromHours(1))
+        var key = EmailThrottleKey(alarm.ChannelId, alarm.AlarmType);
+        var interval = GetMinEmailInterval();
+        var nowUtc = DateTime.UtcNow;
+
+        lock (_emailThrottleLock)
         {
-            return;
+            if (_lastEmailSentUtc.TryGetValue(key, out var lastSentUtc) && nowUtc - lastSentUtc < interval)
+            {
+                _logger.LogDebug(
+                    "Alarm email suppressed (debounce): key={Key}, last={Last:O}, interval={Interval}",
+                    key, lastSentUtc, interval);
+                return;
+            }
+
+            // Reserve before await so overlapping acquisition cycles cannot send duplicate mails.
+            _lastEmailSentUtc[key] = nowUtc;
         }
 
         try
         {
             await _emailService.SendAlarmEmailAsync(alarm);
             alarm.EmailSent = true;
-            _lastEmailSent[key] = DateTime.Now;
 
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
@@ -107,6 +146,7 @@ public class AlarmService : IAlarmService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send alarm email");
+            // Keep throttle reservation to avoid hammering a failing API; next window opens after interval.
         }
     }
 }
