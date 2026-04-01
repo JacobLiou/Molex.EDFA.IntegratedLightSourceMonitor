@@ -11,11 +11,12 @@ namespace LightSourceMonitor.Services.Alarm;
 
 public class AlarmService : IAlarmService
 {
+    private const double UnifiedAlarmThreshold = 0.15;
     private readonly IServiceProvider _services;
     private readonly ILogger<AlarmService> _logger;
     private readonly IEmailService _emailService;
     private readonly AlarmEmailOptions _emailOptions;
-    private readonly ConcurrentDictionary<string, DateTime> _lastEmailSentUtc = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, DateTime> _lastEmailSentUtc = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _emailSendGate = new(1, 1);
 
     public event Action<AlarmEvent>? AlarmRaised;
@@ -91,10 +92,15 @@ public class AlarmService : IAlarmService
         _logger.LogWarning("Alarm: {Type} on {Channel} — measured={Value:F3}, spec={Spec:F3}, delta={Delta:F3}",
             alarm.AlarmType, channel.ChannelName, alarm.MeasuredValue, alarm.SpecValue, alarm.Delta);
 
-        _ = TrySendEmailAsync(alarm, channel.ChannelName, channel.SpecPowerMin, channel.SpecPowerMax);
+        _ = TrySendEmailAsync(alarm, channel.DeviceSN, channel.ChannelName, channel.SpecPowerMin, channel.SpecPowerMax);
     }
 
-    private static string EmailThrottleKey(int channelId, AlarmType type) => $"{channelId}_{type}";
+    private static string EmailThrottleKey(string? deviceSn, string? channelName, int channelId, AlarmType type)
+    {
+        var sn = string.IsNullOrWhiteSpace(deviceSn) ? "UNKNOWN_SN" : deviceSn.Trim();
+        var name = string.IsNullOrWhiteSpace(channelName) ? $"CH{channelId}" : channelName.Trim();
+        return $"{sn}_{name}_{type}";
+    }
 
     private TimeSpan GetMinEmailInterval()
     {
@@ -104,7 +110,7 @@ public class AlarmService : IAlarmService
         return TimeSpan.FromMinutes(m);
     }
 
-    private async Task TrySendEmailAsync(AlarmEvent alarm, string? channelName, double? specMin, double? specMax)
+    private async Task TrySendEmailAsync(AlarmEvent alarm, string? deviceSn, string? channelName, double? specMin, double? specMax)
     {
         if (!await _emailSendGate.WaitAsync(0))
         {
@@ -112,7 +118,7 @@ public class AlarmService : IAlarmService
             return;
         }
 
-        var key = EmailThrottleKey(alarm.ChannelId, alarm.AlarmType);
+        var key = EmailThrottleKey(deviceSn, channelName, alarm.ChannelId, alarm.AlarmType);
         var interval = GetMinEmailInterval();
         var nowUtc = DateTime.UtcNow;
 
@@ -132,6 +138,8 @@ public class AlarmService : IAlarmService
             await _emailService.SendAlarmEmailAsync(
                 alarm,
                 channelName,
+                deviceSn,
+                UnifiedAlarmThreshold,
                 specMin,
                 specMax);
             alarm.EmailSent = true;

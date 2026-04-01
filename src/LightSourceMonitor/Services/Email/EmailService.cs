@@ -24,6 +24,8 @@ public class EmailService : IEmailService
     public async Task SendAlarmEmailAsync(
         AlarmEvent alarm,
         string? channelName = null,
+        string? deviceSn = null,
+        double? alarmThreshold = null,
         double? specMin = null,
         double? specMax = null,
         byte[]? trendScreenshot = null)
@@ -39,6 +41,7 @@ public class EmailService : IEmailService
             return;
 
         var levelText = alarm.Level == AlarmLevel.Critical ? "严重告警" : "警告";
+        var deviceSnText = string.IsNullOrWhiteSpace(deviceSn) ? "未知设备" : deviceSn.Trim();
         var channelText = string.IsNullOrWhiteSpace(channelName) ? "未知通道" : channelName.Trim();
         var subject = $"[{levelText}] 集成光源监控 - {alarm.AlarmType}";
         var bodyLines = new[]
@@ -46,7 +49,9 @@ public class EmailService : IEmailService
             $"时间: {alarm.OccurredAt:yyyy-MM-dd HH:mm:ss}",
             $"等级: {levelText}",
             $"告警类型: {alarm.AlarmType}",
+            $"设备SN: {deviceSnText}",
             $"通道名称: {channelText}",
+            $"统一告警阈值: {(alarmThreshold ?? 0.15):F3}",
             $"测量值: {alarm.MeasuredValue:F3}",
             $"Spec值: {alarm.SpecValue:F3}",
             $"Delta值: {alarm.Delta:F3}"
@@ -95,7 +100,7 @@ public class EmailService : IEmailService
             Delta = 0.345,
             ChannelId = 0
         };
-        await SendAlarmEmailAsync(testAlarm, "测试通道", -12.200, -11.800);
+        await SendAlarmEmailAsync(testAlarm, "测试通道", "TEST-SN-001", 0.15, -12.200, -11.800);
     }
 
     private async Task<EmailConfig?> GetEmailConfigAsync()
