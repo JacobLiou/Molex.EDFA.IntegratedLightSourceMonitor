@@ -42,12 +42,13 @@ public class AcquisitionService : IAcquisitionService
     public event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
     public event Action<WavelengthTableSnapshot>? WavelengthTableUpdated;
     public event Action<IReadOnlyDictionary<string, WbaTelemetrySnapshot>>? WbaTelemetryAcquired;
+    public event Action<DateTime>? AcquisitionCycleCompleted;
     public event Action<bool>? PdConnectionChanged;
     public event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;
 
     public int SamplingIntervalMs { get; set; } = 5000;
-    public int WmSweepEveryN { get; set; } = 10;
-    public int DbWriteEveryN { get; set; } = 10;
+    public int WmSweepEveryN { get; set; } = 20;
+    public int DbWriteEveryN { get; set; } = 20;
 
     public AcquisitionService(
         IServiceProvider services,
@@ -72,18 +73,27 @@ public class AcquisitionService : IAcquisitionService
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
 
-        // Mode-based defaults:
-        // - SimulatedCom: fast feedback for demo/verification.
-        // - Other modes (real/sock/com): minute-level WM sweep cadence.
-        if (string.Equals(_wmServiceSettings.Mode, "SimulatedCom", StringComparison.OrdinalIgnoreCase))
+        LoadAcquisitionConfigAsync().SafeFireAndForget("AcquisitionService.LoadAcquisitionConfig");
+    }
+
+    private async Task LoadAcquisitionConfigAsync()
+    {
+        try
         {
-            SamplingIntervalMs = 1000;
-            WmSweepEveryN = 1;
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+
+            var acqConfig = await db.AcquisitionConfigs.FirstOrDefaultAsync();
+            if (acqConfig != null)
+            {
+                SamplingIntervalMs = acqConfig.SamplingIntervalMs;
+                WmSweepEveryN = acqConfig.WmSweepEveryN;
+                DbWriteEveryN = acqConfig.DbWriteEveryN;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            SamplingIntervalMs = 5000;
-            WmSweepEveryN = 36; // 5000ms * 36 ~= 3 minutes.
+            _logger.LogWarning(ex, "WM driver initialization failed");
         }
     }
 
@@ -199,6 +209,9 @@ public class AcquisitionService : IAcquisitionService
 
                 if (channels.Count == 0)
                 {
+                    _sampleCount++;
+                    // 即使没有通道，也要触发周期完成事件以更新UI
+                    AcquisitionCycleCompleted?.Invoke(now);
                     await Task.Delay(samplingIntervalMs, ct);
                     continue;
                 }
@@ -286,6 +299,10 @@ public class AcquisitionService : IAcquisitionService
                         WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
                     _sampleCount++;
+
+                    // 采集周期完成事件，即使没有PD数据也要触发
+                    AcquisitionCycleCompleted?.Invoke(now);
+
                     await Task.Delay(samplingIntervalMs, ct);
                     continue;
                 }
@@ -324,6 +341,9 @@ public class AcquisitionService : IAcquisitionService
                         _logger.LogError(ex, "Alarm evaluation failed for channelId={Id}", kvp.Key);
                     }
                 }
+
+                // 采集周期完成事件，使用统一的时间戳
+                AcquisitionCycleCompleted?.Invoke(now);
 
                 _consecutiveErrors = 0;
             }

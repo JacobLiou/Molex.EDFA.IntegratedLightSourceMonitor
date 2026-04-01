@@ -27,15 +27,12 @@ public partial class SettingsViewModel : ObservableObject
     private readonly ITmsService _tmsService;
     private readonly IChannelCatalog _channelCatalog;
     private readonly IPdDriverManager _pdDriverManager;
+    private readonly IWbaDeviceManager _wbaDeviceManager;
     private readonly DriverSettings _driverSettings;
     private readonly WavelengthServiceSettings _wmServiceSettings;
     private readonly ILogger<SettingsViewModel> _logger;
 
-    [ObservableProperty] private string _smtpServer = "";
-    [ObservableProperty] private int _smtpPort = 587;
-    [ObservableProperty] private string _smtpUsername = "";
-    [ObservableProperty] private string _smtpPassword = "";
-    [ObservableProperty] private string _fromAddress = "";
+    [ObservableProperty] private string _emailApiUrl = "";
     [ObservableProperty] private string _recipients = "";
 
     [ObservableProperty] private double _pdAlarmDelta = 0.15;
@@ -53,6 +50,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _acqParamsStatus = "";
     [ObservableProperty] private string _driverMode = "";
     [ObservableProperty] private string _pdDriverStatus = "";
+    [ObservableProperty] private string _wbaDriverStatus = "";
     [ObservableProperty] private string _wmDriverStatus = "";
     [ObservableProperty] private bool _isAcquisitionRunning;
     [ObservableProperty] private string _wmConfigXmlPath = "";
@@ -73,6 +71,7 @@ public partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(IServiceProvider services, IEmailService emailService,
                              ITmsService tmsService, IChannelCatalog channelCatalog, IPdDriverManager pdDriverManager,
+                             IWbaDeviceManager wbaDeviceManager,
                              IOptions<DriverSettings> driverOptions,
                              IOptions<WavelengthServiceSettings> wmServiceOptions,
                              ILogger<SettingsViewModel> logger)
@@ -82,6 +81,7 @@ public partial class SettingsViewModel : ObservableObject
         _tmsService = tmsService;
         _channelCatalog = channelCatalog;
         _pdDriverManager = pdDriverManager;
+        _wbaDeviceManager = wbaDeviceManager;
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
         _logger = logger;
@@ -98,11 +98,7 @@ public partial class SettingsViewModel : ObservableObject
             var email = await db.EmailConfigs.FirstOrDefaultAsync();
             if (email != null)
             {
-                SmtpServer = email.SmtpServer;
-                SmtpPort = email.SmtpPort;
-                SmtpUsername = email.Username;
-                SmtpPassword = email.EncryptedPassword;
-                FromAddress = email.FromAddress;
+                EmailApiUrl = email.ApiUrl;
                 Recipients = email.Recipients;
             }
 
@@ -112,6 +108,14 @@ public partial class SettingsViewModel : ObservableObject
                 TmsBaseUrl = tms.BaseUrl;
                 TmsApiKey = tms.ApiKey;
                 TmsUploadIntervalSec = tms.UploadIntervalSec;
+            }
+
+            var acqConfig = await db.AcquisitionConfigs.FirstOrDefaultAsync();
+            if (acqConfig != null)
+            {
+                SamplingIntervalMs = acqConfig.SamplingIntervalMs;
+                WmSweepEveryN = acqConfig.WmSweepEveryN;
+                DbWriteEveryN = acqConfig.DbWriteEveryN;
             }
 
             var channels = _channelCatalog.GetAllChannels()
@@ -149,6 +153,13 @@ public partial class SettingsViewModel : ObservableObject
             PdDriverStatus = states.Count == 0
                 ? "未配置PD设备"
                 : $"{connectedCount}/{states.Count} 已连接";
+
+            var wbaStates = _wbaDeviceManager.ConnectionStates;
+            int wbaConnectedCount = wbaStates.Count(kvp => kvp.Value);
+            WbaDriverStatus = wbaStates.Count == 0
+                ? "未配置WBA设备"
+                : $"{wbaConnectedCount}/{wbaStates.Count} 已连接";
+
             WmDriverStatus = wmDriver.IsInitialized ? "已初始化" : "未初始化";
 
             var acq = _services.GetRequiredService<IAcquisitionService>();
@@ -172,11 +183,7 @@ public partial class SettingsViewModel : ObservableObject
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
 
             var email = await db.EmailConfigs.FirstOrDefaultAsync() ?? new EmailConfig();
-            email.SmtpServer = SmtpServer;
-            email.SmtpPort = SmtpPort;
-            email.Username = SmtpUsername;
-            email.EncryptedPassword = SmtpPassword;
-            email.FromAddress = FromAddress;
+            email.ApiUrl = EmailApiUrl;
             email.Recipients = Recipients;
             if (email.Id == 0) db.EmailConfigs.Add(email);
 
@@ -228,7 +235,7 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task TestSmtp()
+    private async Task TestEmailApi()
     {
         try
         {
@@ -243,13 +250,13 @@ public partial class SettingsViewModel : ObservableObject
 
             await PersistEmailSettingsAsync();
 
-            StatusMessage = "正在发送测试邮件...";
+            StatusMessage = "正在调用邮件 API...";
             await _emailService.SendTestEmailAsync();
             _consecutiveEmailFailureCount = 0;
             EmailTestStatusIcon = "✔";
             EmailTestStatusColor = "#00E676";
-            EmailTestStatusText = "测试邮件发送成功";
-            StatusMessage = "测试邮件已发送";
+            EmailTestStatusText = "测试请求发送成功";
+            StatusMessage = "测试邮件已通过 API 发送";
         }
         catch (Exception ex)
         {
@@ -261,7 +268,7 @@ public partial class SettingsViewModel : ObservableObject
 
             if (_consecutiveEmailFailureCount >= 3)
             {
-                Growl.WarningGlobal("邮件发送连续失败，请检查 SMTP 服务器、端口、账号密码和网络连通性。");
+                Growl.WarningGlobal("邮件发送连续失败，请检查邮件 API 地址、收件人配置和网络连通性。");
             }
         }
     }
@@ -272,12 +279,13 @@ public partial class SettingsViewModel : ObservableObject
         var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
         var email = await db.EmailConfigs.FirstOrDefaultAsync() ?? new EmailConfig();
 
-        email.SmtpServer = SmtpServer.Trim();
-        email.SmtpPort = SmtpPort;
-        email.Username = SmtpUsername.Trim();
-        email.EncryptedPassword = SmtpPassword;
-        email.FromAddress = FromAddress.Trim();
+        email.ApiUrl = EmailApiUrl.Trim();
         email.Recipients = Recipients.Trim();
+        email.SmtpPort = 0;
+        email.Username = string.Empty;
+        email.EncryptedPassword = string.Empty;
+        email.FromAddress = string.Empty;
+        email.UseSsl = false;
 
         if (email.Id == 0)
             db.EmailConfigs.Add(email);
@@ -287,33 +295,22 @@ public partial class SettingsViewModel : ObservableObject
 
     private bool ValidateEmailConfig(out string error)
     {
-        if (string.IsNullOrWhiteSpace(SmtpServer))
+        if (string.IsNullOrWhiteSpace(EmailApiUrl))
         {
-            error = "请先填写 SMTP 服务器";
+            error = "请先填写邮件 API 地址";
             return false;
         }
 
-        if (SmtpPort <= 0 || SmtpPort > 65535)
+        if (!Uri.TryCreate(EmailApiUrl, UriKind.Absolute, out var apiUri)
+            || (apiUri.Scheme != Uri.UriSchemeHttp && apiUri.Scheme != Uri.UriSchemeHttps))
         {
-            error = "SMTP 端口无效";
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(FromAddress))
-        {
-            error = "请先填写发件人邮箱";
+            error = "邮件 API 地址无效";
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(Recipients))
         {
             error = "请先填写至少一个收件人";
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(SmtpUsername) && string.IsNullOrWhiteSpace(SmtpPassword))
-        {
-            error = "已填写用户名，请补充密码";
             return false;
         }
 
@@ -337,7 +334,7 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private Task ApplyAcquisitionParams()
+    private async Task ApplyAcquisitionParams()
     {
         try
         {
@@ -354,12 +351,20 @@ public partial class SettingsViewModel : ObservableObject
             AcqParamsStatus = $"已应用 — 间隔{SamplingIntervalMs}ms, WM每{WmSweepEveryN}次, DB每{DbWriteEveryN}次";
             _logger.LogInformation("Acquisition params updated: interval={Interval}ms, wmEvery={WmN}, dbEvery={DbN}",
                 SamplingIntervalMs, WmSweepEveryN, DbWriteEveryN);
+
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            var acqConfig = await db.AcquisitionConfigs.FirstOrDefaultAsync() ?? new AcquisitionConfig();
+            acqConfig.SamplingIntervalMs = SamplingIntervalMs;
+            acqConfig.WmSweepEveryN = WmSweepEveryN;
+            acqConfig.DbWriteEveryN = DbWriteEveryN;
+            if (acqConfig.Id == 0) db.AcquisitionConfigs.Add(acqConfig);
+            await db.SaveChangesAsync();
         }
         catch (Exception ex)
         {
             AcqParamsStatus = "应用失败: " + ex.Message;
             _logger.LogError(ex, "Failed to apply acquisition params");
         }
-        return Task.CompletedTask;
     }
 }

@@ -1,10 +1,10 @@
-using System.Collections.Concurrent;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Email;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace LightSourceMonitor.Services.Alarm;
 
@@ -81,7 +81,7 @@ public class AlarmService : IAlarmService
         _logger.LogWarning("Alarm: {Type} on {Channel} — measured={Value:F3}, spec={Spec:F3}, delta={Delta:F3}",
             alarm.AlarmType, channel.ChannelName, alarm.MeasuredValue, alarm.SpecValue, alarm.Delta);
 
-        await TrySendEmailAsync(alarm, channel);
+        _ = TrySendEmailAsync(alarm, channel);
     }
 
     private async Task TrySendEmailAsync(AlarmEvent alarm, LaserChannel channel)

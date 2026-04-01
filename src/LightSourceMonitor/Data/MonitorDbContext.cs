@@ -9,6 +9,7 @@ public class MonitorDbContext : DbContext
     public DbSet<AlarmEvent> AlarmEvents => Set<AlarmEvent>();
     public DbSet<EmailConfig> EmailConfigs => Set<EmailConfig>();
     public DbSet<TmsConfig> TmsConfigs => Set<TmsConfig>();
+    public DbSet<AcquisitionConfig> AcquisitionConfigs => Set<AcquisitionConfig>();
 
     public MonitorDbContext(DbContextOptions<MonitorDbContext> options) : base(options)
     {

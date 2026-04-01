@@ -129,6 +129,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _acquisitionService.DataAcquired += OnDataAcquired;
         _acquisitionService.WavelengthTableUpdated += OnWavelengthTableUpdated;
         _acquisitionService.WbaTelemetryAcquired += OnWbaTelemetryAcquired;
+        _acquisitionService.AcquisitionCycleCompleted += OnAcquisitionCycleCompleted;
         _acquisitionService.PdConnectionChanged += OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged += OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised += OnAlarmRaised;
@@ -336,6 +337,23 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         });
     }
 
+    private void OnAcquisitionCycleCompleted(DateTime cycleTime)
+    {
+        AsyncHelper.SafeDispatcherInvoke(() =>
+        {
+            // 更新主窗口的最后采集时间
+            try
+            {
+                var mainVm = _services.GetRequiredService<MainViewModel>();
+                mainVm.UpdateLastAcquisitionTime(cycleTime);
+            }
+            catch
+            {
+                // 日志记录可能需要添加，但不影响采集流程
+            }
+        });
+    }
+
     [RelayCommand]
     private void NavigateToAlarms()
     {
@@ -374,6 +392,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _acquisitionService.DataAcquired -= OnDataAcquired;
         _acquisitionService.WavelengthTableUpdated -= OnWavelengthTableUpdated;
         _acquisitionService.WbaTelemetryAcquired -= OnWbaTelemetryAcquired;
+        _acquisitionService.AcquisitionCycleCompleted -= OnAcquisitionCycleCompleted;
         _acquisitionService.PdConnectionChanged -= OnPdConnectionChanged;
         _acquisitionService.PdDeviceConnectionChanged -= OnPdDeviceConnectionChanged;
         _alarmService.AlarmRaised -= OnAlarmRaised;

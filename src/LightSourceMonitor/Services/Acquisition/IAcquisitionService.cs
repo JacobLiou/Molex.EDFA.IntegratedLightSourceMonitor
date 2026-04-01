@@ -13,6 +13,7 @@ public interface IAcquisitionService
     event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
     event Action<WavelengthTableSnapshot>? WavelengthTableUpdated;
     event Action<IReadOnlyDictionary<string, WbaTelemetrySnapshot>>? WbaTelemetryAcquired;
+    event Action<DateTime>? AcquisitionCycleCompleted; // 采集周期完成，传递统一的采集时间戳
     event Action<bool>? PdConnectionChanged;
     event Action<IReadOnlyDictionary<string, bool>>? PdDeviceConnectionChanged;
     Task StartAsync(CancellationToken cancellationToken = default);

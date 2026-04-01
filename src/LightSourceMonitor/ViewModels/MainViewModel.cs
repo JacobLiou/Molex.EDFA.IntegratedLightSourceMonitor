@@ -78,4 +78,9 @@ public partial class MainViewModel : ObservableObject
     {
         LastAcquisitionTime = DateTime.Now.ToString("HH:mm:ss");
     }
+
+    public void UpdateLastAcquisitionTime(DateTime acquisitionTime)
+    {
+        LastAcquisitionTime = acquisitionTime.ToString("HH:mm:ss");
+    }
 }

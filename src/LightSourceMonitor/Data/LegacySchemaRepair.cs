@@ -5,6 +5,27 @@ namespace LightSourceMonitor.Data;
 
 public static class LegacySchemaRepair
 {
+    public static async Task<bool> EnsureAcquisitionConfigTableAsync(MonitorDbContext db, CancellationToken ct = default)
+    {
+        await using var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
+
+        var hasTable = await TableExistsAsync(connection, "AcquisitionConfigs", ct);
+        if (hasTable)
+            return false;
+
+        await db.Database.ExecuteSqlRawAsync(@"
+CREATE TABLE IF NOT EXISTS ""AcquisitionConfigs"" (
+    ""Id""                 INTEGER NOT NULL CONSTRAINT ""PK_AcquisitionConfigs"" PRIMARY KEY AUTOINCREMENT,
+    ""SamplingIntervalMs"" INTEGER NOT NULL,
+    ""WmSweepEveryN""      INTEGER NOT NULL,
+    ""DbWriteEveryN""      INTEGER NOT NULL
+);", ct);
+
+        return true;
+    }
+
     public static async Task<bool> EnsureNoLegacyLaserChannelForeignKeysAsync(MonitorDbContext db, CancellationToken ct = default)
     {
         await using var connection = db.Database.GetDbConnection();
@@ -83,5 +104,19 @@ CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_IsSyncedToTms""
             return false;
 
         return sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static async Task<bool> TableExistsAsync(DbConnection connection, string tableName, CancellationToken ct)
+    {
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = @"SELECT COUNT(1) FROM sqlite_master WHERE type = 'table' AND name = $tableName";
+
+        var param = cmd.CreateParameter();
+        param.ParameterName = "$tableName";
+        param.Value = tableName;
+        cmd.Parameters.Add(param);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long count && count > 0;
     }
 }
