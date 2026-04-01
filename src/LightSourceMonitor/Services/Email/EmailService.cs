@@ -21,7 +21,12 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendAlarmEmailAsync(AlarmEvent alarm, byte[]? trendScreenshot = null)
+    public async Task SendAlarmEmailAsync(
+        AlarmEvent alarm,
+        string? channelName = null,
+        double? specMin = null,
+        double? specMax = null,
+        byte[]? trendScreenshot = null)
     {
         var config = await GetEmailConfigAsync();
         if (config == null || string.IsNullOrWhiteSpace(config.ApiUrl))
@@ -34,20 +39,30 @@ public class EmailService : IEmailService
             return;
 
         var levelText = alarm.Level == AlarmLevel.Critical ? "严重告警" : "警告";
+        var channelText = string.IsNullOrWhiteSpace(channelName) ? "未知通道" : channelName.Trim();
         var subject = $"[{levelText}] 集成光源监控 - {alarm.AlarmType}";
-        var body = $"""
-时间: {alarm.OccurredAt:yyyy-MM-dd HH:mm:ss}
-等级: {levelText}
-告警类型: {alarm.AlarmType}
-通道ID: {alarm.ChannelId}
-测量值: {alarm.MeasuredValue:F3}
-Spec值: {alarm.SpecValue:F3}
-偏差: {alarm.Delta:F3}
-""";
+        var bodyLines = new[]
+        {
+            $"时间: {alarm.OccurredAt:yyyy-MM-dd HH:mm:ss}",
+            $"等级: {levelText}",
+            $"告警类型: {alarm.AlarmType}",
+            $"通道名称: {channelText}",
+            $"测量值: {alarm.MeasuredValue:F3}",
+            $"Spec值: {alarm.SpecValue:F3}",
+            $"Delta值: {alarm.Delta:F3}"
+        };
+        var bodyLineList = bodyLines.ToList();
+        if (specMin.HasValue && specMax.HasValue)
+        {
+            bodyLineList.Add($"下限: {specMin.Value:F3}");
+            bodyLineList.Add($"上限: {specMax.Value:F3}");
+        }
+
+        var body = string.Join("<br/>", bodyLineList);
 
         if (trendScreenshot != null)
         {
-            body += Environment.NewLine + "趋势截图已生成，但当前邮件 API 版本不支持附件。";
+            body += "<br/>趋势截图已生成，但当前邮件 API 版本不支持附件。";
         }
 
         var payload = new
@@ -65,7 +80,7 @@ Spec值: {alarm.SpecValue:F3}
             throw new InvalidOperationException($"邮件 API 调用失败: {(int)response.StatusCode} {response.ReasonPhrase} {responseBody}".Trim());
         }
 
-        _logger.LogInformation("Alarm email sent by HTTP API for channel {ChannelId}", alarm.ChannelId);
+        _logger.LogInformation("Alarm email sent by HTTP API for channel {ChannelName} ({ChannelId})", channelText, alarm.ChannelId);
     }
 
     public async Task SendTestEmailAsync()
@@ -80,7 +95,7 @@ Spec值: {alarm.SpecValue:F3}
             Delta = 0.345,
             ChannelId = 0
         };
-        await SendAlarmEmailAsync(testAlarm);
+        await SendAlarmEmailAsync(testAlarm, "测试通道", -12.200, -11.800);
     }
 
     private async Task<EmailConfig?> GetEmailConfigAsync()

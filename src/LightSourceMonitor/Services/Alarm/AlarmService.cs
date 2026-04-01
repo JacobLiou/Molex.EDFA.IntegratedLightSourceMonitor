@@ -72,7 +72,6 @@ public class AlarmService : IAlarmService
 
         if (alarm == null)
         {
-            ClearEmailThrottleForChannel(channel.Id);
             return;
         }
 
@@ -92,13 +91,7 @@ public class AlarmService : IAlarmService
         _logger.LogWarning("Alarm: {Type} on {Channel} — measured={Value:F3}, spec={Spec:F3}, delta={Delta:F3}",
             alarm.AlarmType, channel.ChannelName, alarm.MeasuredValue, alarm.SpecValue, alarm.Delta);
 
-        _ = TrySendEmailAsync(alarm, channel);
-    }
-
-    private void ClearEmailThrottleForChannel(int channelId)
-    {
-        _lastEmailSentUtc.TryRemove(EmailThrottleKey(channelId, AlarmType.PowerDrift), out _);
-        _lastEmailSentUtc.TryRemove(EmailThrottleKey(channelId, AlarmType.WavelengthDrift), out _);
+        _ = TrySendEmailAsync(alarm, channel.ChannelName, channel.SpecPowerMin, channel.SpecPowerMax);
     }
 
     private static string EmailThrottleKey(int channelId, AlarmType type) => $"{channelId}_{type}";
@@ -111,7 +104,7 @@ public class AlarmService : IAlarmService
         return TimeSpan.FromMinutes(m);
     }
 
-    private async Task TrySendEmailAsync(AlarmEvent alarm, LaserChannel channel)
+    private async Task TrySendEmailAsync(AlarmEvent alarm, string? channelName, double? specMin, double? specMax)
     {
         if (!await _emailSendGate.WaitAsync(0))
         {
@@ -136,8 +129,15 @@ public class AlarmService : IAlarmService
             // Reserve before await so concurrent background tasks cannot send duplicate mails.
             _lastEmailSentUtc[key] = nowUtc;
 
-            await _emailService.SendAlarmEmailAsync(alarm);
+            await _emailService.SendAlarmEmailAsync(
+                alarm,
+                channelName,
+                specMin,
+                specMax);
             alarm.EmailSent = true;
+            _logger.LogInformation(
+                "Alarm email sent: channelId={ChannelId}, type={Type}, level={Level}, occurredAt={OccurredAt:O}",
+                alarm.ChannelId, alarm.AlarmType, alarm.Level, alarm.OccurredAt);
 
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
