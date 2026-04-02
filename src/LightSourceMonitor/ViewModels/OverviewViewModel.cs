@@ -329,10 +329,23 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     {
         AsyncHelper.SafeDispatcherInvoke(() =>
         {
-            string channelName = _channelMap.TryGetValue(alarm.ChannelId, out var entry) ? entry.card.ChannelName : $"CH{alarm.ChannelId}";
+            string deviceSn = "";
+            string channelName = $"CH{alarm.ChannelId}";
+            if (_channelMap.TryGetValue(alarm.ChannelId, out var entry))
+            {
+                deviceSn = entry.card.DeviceSn;
+                channelName = entry.card.ChannelName;
+            }
+            else if (_channelCatalog.GetById(alarm.ChannelId) is { } ch)
+            {
+                deviceSn = ch.DeviceSN;
+                channelName = ch.ChannelName;
+            }
+
             var item = new AlarmItemViewModel
             {
                 Timestamp = alarm.OccurredAt,
+                DeviceSn = string.IsNullOrWhiteSpace(deviceSn) ? "—" : deviceSn,
                 ChannelName = channelName,
                 Message = $"{alarm.AlarmType}: {alarm.MeasuredValue:F3} (spec {alarm.SpecValue:F3}, Δ{alarm.Delta:F3})",
                 Level = alarm.Level == AlarmLevel.Critical ? "严重" : "警告",
@@ -411,6 +424,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
 public partial class AlarmItemViewModel : ObservableObject
 {
     [ObservableProperty] private DateTime _timestamp;
+    [ObservableProperty] private string _deviceSn = "";
     [ObservableProperty] private string _channelName = "";
     [ObservableProperty] private string _message = "";
     [ObservableProperty] private string _levelColor = "#FF1744";

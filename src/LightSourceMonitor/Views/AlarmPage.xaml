@@ -73,7 +73,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="时间" Binding="{Binding OccurredAt, StringFormat='{}{0:HH:mm:ss}'}" Width="80">
+                <DataGridTextColumn Header="时间" Binding="{Binding OccurredAt, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Width="150">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="FontFamily" Value="Consolas"/>
@@ -82,7 +82,7 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="级别" Binding="{Binding Level}" Width="60"/>
-                <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="120"/>
+                <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="220"/>
                 <DataGridTextColumn Header="测量值" Binding="{Binding MeasuredValue, StringFormat='{}{0:F3}'}" Width="100">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">

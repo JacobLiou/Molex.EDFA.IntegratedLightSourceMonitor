@@ -31,7 +31,6 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
     private readonly IAlarmService _alarmService;
     private readonly IChannelCatalog _channelCatalog;
     private bool _disposed;
-    private Dictionary<int, string> _channelNames = new();
 
     [ObservableProperty] private ObservableCollection<AlarmRecordViewModel> _alarms = new();
     [ObservableProperty] private string _selectedLevel = "全部";
@@ -61,8 +60,6 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
     {
         try
         {
-            _channelNames = _channelCatalog.GetChannelMap().ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ChannelName);
-
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
 
@@ -122,14 +119,18 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
 
     private AlarmRecordViewModel ToViewModel(AlarmEvent a)
     {
-        string chName = _channelNames.TryGetValue(a.ChannelId, out var name) ? name : $"CH{a.ChannelId}";
+        var ch = _channelCatalog.GetById(a.ChannelId);
+        var channelDisplay = ch != null
+            ? $"{ch.DeviceSN}-{ch.ChannelName}"
+            : "未知通道";
+
         return new AlarmRecordViewModel
         {
             Id = a.Id,
             OccurredAt = a.OccurredAt,
             Level = a.Level == AlarmLevel.Critical ? "严重" : "警告",
             LevelColor = a.Level == AlarmLevel.Critical ? "#FF1744" : "#FFAB00",
-            ChannelName = chName,
+            ChannelName = channelDisplay,
             MeasuredValue = a.MeasuredValue,
             SpecValue = a.SpecValue,
             Delta = a.Delta,
