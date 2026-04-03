@@ -119,10 +119,19 @@ public partial class AlarmViewModel : ObservableObject, IDisposable
 
     private AlarmRecordViewModel ToViewModel(AlarmEvent a)
     {
-        var ch = _channelCatalog.GetById(a.ChannelId);
-        var channelDisplay = ch != null
-            ? $"{ch.DeviceSN}-{ch.ChannelName}"
-            : "未知通道";
+        string channelDisplay;
+        if (WmAlarmChannelIds.IsWavelengthServiceAlarm(a.ChannelId)
+            && WmAlarmChannelIds.TryDecode(a.ChannelId, out var wmIdx))
+        {
+            channelDisplay = $"WM波长服务-路{wmIdx}";
+        }
+        else
+        {
+            var ch = _channelCatalog.GetById(a.ChannelId);
+            channelDisplay = ch != null
+                ? $"{ch.DeviceSN}-{ch.ChannelName}"
+                : "未知通道";
+        }
 
         return new AlarmRecordViewModel
         {

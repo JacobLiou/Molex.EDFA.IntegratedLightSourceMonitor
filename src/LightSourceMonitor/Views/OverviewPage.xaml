@@ -219,7 +219,18 @@
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="序号" Binding="{Binding ChannelIndex}" Width="56"/>
-                            <DataGridTextColumn Header="波长 nm" Binding="{Binding WavelengthDisplay}" Width="*"/>
+                            <DataGridTextColumn Header="波长 nm" Binding="{Binding WavelengthDisplay}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontFamily" Value="Consolas" />
+                                        <Setter Property="FontSize" Value="13" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="Foreground" Value="{Binding WavelengthForeground}" />
+                                        <Setter Property="ToolTip" Value="{Binding WavelengthToolTip}" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="更新时间" Binding="{Binding LastUpdate}" Width="88"/>
                         </DataGrid.Columns>
                     </DataGrid>

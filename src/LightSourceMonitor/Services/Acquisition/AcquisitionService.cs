@@ -294,7 +294,11 @@ public class AcquisitionService : IAcquisitionService
                 if (batch.Count == 0)
                 {
                     if (wlTable != null)
+                    {
                         WavelengthTableUpdated.SafeInvoke(wlTable, nameof(WavelengthTableUpdated));
+                        await EvaluateWmWavelengthAlarmsAsync(wlTable, ct);
+                    }
+
                     if (wbaBatch.Count > 0)
                         WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
@@ -310,7 +314,11 @@ public class AcquisitionService : IAcquisitionService
                 // Push UI updates first; DB and alarm processing should not block dashboard refresh.
                 DataAcquired.SafeInvoke(batch, nameof(DataAcquired));
                 if (wlTable != null)
+                {
                     WavelengthTableUpdated.SafeInvoke(wlTable, nameof(WavelengthTableUpdated));
+                    await EvaluateWmWavelengthAlarmsAsync(wlTable, ct);
+                }
+
                 if (wbaBatch.Count > 0)
                     WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
 
@@ -431,6 +439,40 @@ public class AcquisitionService : IAcquisitionService
             Timestamp = now,
             Rows = rows
         };
+    }
+
+    private async Task EvaluateWmWavelengthAlarmsAsync(WavelengthTableSnapshot wlTable, CancellationToken ct)
+    {
+        var specs = _wmServiceSettings.ChannelSpecs;
+        if (specs == null || specs.Count == 0)
+            return;
+
+        var deviceId = wlTable.QueryDeviceId;
+        foreach (var row in wlTable.Rows)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!row.IsValid)
+                continue;
+
+            var spec = _wmServiceSettings.ResolveChannelSpec(row.ChannelIndex);
+            if (spec == null)
+                continue;
+
+            try
+            {
+                await _alarmService.EvaluateWavelengthServiceChannelAsync(
+                    wlTable.Timestamp,
+                    row.ChannelIndex,
+                    row.WavelengthNm,
+                    spec,
+                    _wmServiceSettings,
+                    deviceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "WM wavelength alarm evaluation failed for index {Index}", row.ChannelIndex);
+            }
+        }
     }
 
     private void UpdateAndPublishPdStates(bool forceNotify = false)

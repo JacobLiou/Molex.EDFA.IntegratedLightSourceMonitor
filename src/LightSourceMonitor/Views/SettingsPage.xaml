@@ -237,88 +237,141 @@
                                         CornerRadius="8"
                                         Padding="16"
                                         Margin="0,8,0,8">
-                                    <Grid Margin="0,4,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="180" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Text="WM XML路径:"
+                                    <StackPanel Margin="0,4,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="180" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="WM XML路径:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding WmConfigXmlPath}"
+                                                       Foreground="#E8E8F0"
+                                                       Margin="0,0,0,6"
+                                                       FontFamily="Consolas" />
+                                            <TextBlock Grid.Row="1"
+                                                       Text="服务模式:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="1"
+                                                       Grid.Column="1"
+                                                       Text="{Binding WmServiceMode}"
+                                                       Foreground="#7C4DFF"
+                                                       Margin="0,0,0,6"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Grid.Row="2"
+                                                       Text="模拟开关:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="2"
+                                                       Grid.Column="1"
+                                                       Text="{Binding WmServiceIsSimulated}"
+                                                       Foreground="#E8E8F0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="3"
+                                                       Text="模拟COM口:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="3"
+                                                       Grid.Column="1"
+                                                       Text="{Binding WmComPort}"
+                                                       Foreground="#E8E8F0"
+                                                       Margin="0,0,0,6"
+                                                       FontFamily="Consolas" />
+                                            <TextBlock Grid.Row="4"
+                                                       Text="波特率:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="4"
+                                                       Grid.Column="1"
+                                                       Text="{Binding WmComBaudRate}"
+                                                       Foreground="#E8E8F0"
+                                                       Margin="0,0,0,6"
+                                                       FontFamily="Consolas" />
+                                            <TextBlock Grid.Row="5"
+                                                       Text="表格通道数:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="5"
+                                                       Grid.Column="1"
+                                                       Text="{Binding WmTableChannelCount}"
+                                                       Foreground="#E8E8F0"
+                                                       Margin="0,0,0,6"
+                                                       FontFamily="Consolas" />
+                                            <TextBlock Grid.Row="6"
+                                                       Text="查询设备ID:"
+                                                       Foreground="#9898B0"
+                                                       Margin="0,0,0,6" />
+                                            <TextBlock Grid.Row="6"
+                                                       Grid.Column="1"
+                                                       Text="{Binding WmQueryDeviceId}"
+                                                       Foreground="#E8E8F0"
+                                                       Margin="0,0,0,6"
+                                                       FontFamily="Consolas" />
+                                        </Grid>
+                                        <TextBlock Text="默认波长告警容差 (nm)，各路 AlarmDeltaNm 为 0 时采用此值"
                                                    Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{Binding WmConfigXmlPath}"
-                                                   Foreground="#E8E8F0"
-                                                   Margin="0,0,0,6"
-                                                   FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="1"
-                                                   Text="服务模式:"
-                                                   Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="1"
-                                                   Grid.Column="1"
-                                                   Text="{Binding WmServiceMode}"
+                                                   Margin="0,14,0,4" />
+                                        <TextBlock Text="{Binding WmAlarmDelta, StringFormat={}{0:F3}}"
                                                    Foreground="#7C4DFF"
-                                                   Margin="0,0,0,6"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock Grid.Row="2"
-                                                   Text="模拟开关:"
+                                                   FontFamily="Consolas"
+                                                   Margin="0,0,0,10" />
+                                        <TextBlock Text="WM 各路波长 Spec（与 appsettings.json 中 WavelengthService.ChannelSpecs 一致）"
                                                    Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="2"
-                                                   Grid.Column="1"
-                                                   Text="{Binding WmServiceIsSimulated}"
-                                                   Foreground="#E8E8F0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="3"
-                                                   Text="模拟COM口:"
-                                                   Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="3"
-                                                   Grid.Column="1"
-                                                   Text="{Binding WmComPort}"
-                                                   Foreground="#E8E8F0"
-                                                   Margin="0,0,0,6"
-                                                   FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="4"
-                                                   Text="波特率:"
-                                                   Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="4"
-                                                   Grid.Column="1"
-                                                   Text="{Binding WmComBaudRate}"
-                                                   Foreground="#E8E8F0"
-                                                   Margin="0,0,0,6"
-                                                   FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="5"
-                                                   Text="表格通道数:"
-                                                   Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="5"
-                                                   Grid.Column="1"
-                                                   Text="{Binding WmTableChannelCount}"
-                                                   Foreground="#E8E8F0"
-                                                   Margin="0,0,0,6"
-                                                   FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="6"
-                                                   Text="查询设备ID:"
-                                                   Foreground="#9898B0"
-                                                   Margin="0,0,0,6" />
-                                        <TextBlock Grid.Row="6"
-                                                   Grid.Column="1"
-                                                   Text="{Binding WmQueryDeviceId}"
-                                                   Foreground="#E8E8F0"
-                                                   Margin="0,0,0,6"
-                                                   FontFamily="Consolas" />
-                                    </Grid>
+                                                   Margin="0,0,0,8" />
+                                        <DataGrid ItemsSource="{Binding WmServiceChannelSpecs}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True"
+                                                  Background="Transparent"
+                                                  Foreground="#E8E8F0"
+                                                  BorderThickness="0"
+                                                  GridLinesVisibility="Horizontal"
+                                                  HorizontalGridLinesBrush="#334466"
+                                                  RowBackground="#23233D"
+                                                  AlternatingRowBackground="#1B1B2F"
+                                                  HeadersVisibility="Column"
+                                                  CanUserResizeRows="False"
+                                                  MaxHeight="280">
+                                            <DataGrid.ColumnHeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader">
+                                                    <Setter Property="Background" Value="#1B1B2F" />
+                                                    <Setter Property="Foreground" Value="#9898B0" />
+                                                    <Setter Property="Padding" Value="10,8" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                    <Setter Property="BorderBrush" Value="#334466" />
+                                                    <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                                </Style>
+                                            </DataGrid.ColumnHeaderStyle>
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="序号"
+                                                                    Binding="{Binding ChannelIndex}"
+                                                                    Width="56" />
+                                                <DataGridTextColumn Header="名称"
+                                                                    Binding="{Binding ChannelName}"
+                                                                    Width="120" />
+                                                <DataGridTextColumn Header="标称波长(nm)"
+                                                                    Binding="{Binding SpecWavelengthNm, StringFormat='{}{0:F3}'}"
+                                                                    Width="110" />
+                                                <DataGridTextColumn Header="告警Δ(nm)"
+                                                                    Binding="{Binding AlarmDeltaNm, StringFormat='{}{0:F3}'}"
+                                                                    Width="90" />
+                                                <DataGridCheckBoxColumn Header="启用"
+                                                                        Binding="{Binding IsEnabled}"
+                                                                        Width="56" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </StackPanel>
                                 </Border>
                             </Expander>
                             <Expander Header="WBA 设备配置"

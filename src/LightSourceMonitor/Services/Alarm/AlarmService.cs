@@ -95,6 +95,59 @@ public class AlarmService : IAlarmService
         _ = TrySendEmailAsync(alarm, channel.DeviceSN, channel.ChannelName, channel.SpecPowerMin, channel.SpecPowerMax);
     }
 
+    public async Task EvaluateWavelengthServiceChannelAsync(
+        DateTime occurredAt,
+        int wmChannelIndex,
+        double measuredWavelengthNm,
+        WavelengthServiceChannelSpec spec,
+        WavelengthServiceSettings wmSettings,
+        string queryDeviceId)
+    {
+        if (!spec.IsEnabled || spec.SpecWavelengthNm <= 0)
+            return;
+
+        var alarmDeltaNm = wmSettings.GetEffectiveAlarmDeltaNm(spec);
+        if (alarmDeltaNm <= 0)
+            return;
+
+        var wlDelta = Math.Abs(measuredWavelengthNm - spec.SpecWavelengthNm);
+        if (wlDelta <= alarmDeltaNm)
+            return;
+
+        var level = wlDelta > alarmDeltaNm * 1.5 ? AlarmLevel.Critical : AlarmLevel.Warning;
+        var alarm = new AlarmEvent
+        {
+            ChannelId = WmAlarmChannelIds.Encode(wmChannelIndex),
+            OccurredAt = occurredAt,
+            AlarmType = AlarmType.WavelengthDrift,
+            Level = level,
+            MeasuredValue = measuredWavelengthNm,
+            SpecValue = spec.SpecWavelengthNm,
+            Delta = wlDelta
+        };
+
+        try
+        {
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            db.AlarmEvents.Add(alarm);
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save WM wavelength alarm event");
+        }
+
+        AlarmRaised.SafeInvoke(alarm, nameof(AlarmRaised));
+        _logger.LogWarning(
+            "WM alarm: WavelengthDrift on index {Index} — measured={Value:F3} nm, spec={Spec:F3} nm, delta={Delta:F3} nm",
+            wmChannelIndex, alarm.MeasuredValue, alarm.SpecValue, alarm.Delta);
+
+        var deviceSn = string.IsNullOrWhiteSpace(queryDeviceId) ? "WM" : queryDeviceId.Trim();
+        var channelLabel = string.IsNullOrWhiteSpace(spec.ChannelName) ? $"路{wmChannelIndex}" : spec.ChannelName.Trim();
+        _ = TrySendEmailAsync(alarm, deviceSn, channelLabel, null, null);
+    }
+
     private static string EmailThrottleKey(string? deviceSn, string? channelName, int channelId, AlarmType type)
     {
         var sn = string.IsNullOrWhiteSpace(deviceSn) ? "UNKNOWN_SN" : deviceSn.Trim();

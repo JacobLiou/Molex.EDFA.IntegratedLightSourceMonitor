@@ -68,6 +68,7 @@ public partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<LaserChannel> Channels { get; } = new();
     public ObservableCollection<WbaDeviceSettings> WbaDevices { get; } = new();
+    public ObservableCollection<WavelengthServiceChannelSpec> WmServiceChannelSpecs { get; } = new();
 
     public SettingsViewModel(IServiceProvider services, IEmailService emailService,
                              ITmsService tmsService, IChannelCatalog channelCatalog, IPdDriverManager pdDriverManager,
@@ -147,6 +148,11 @@ public partial class SettingsViewModel : ObservableObject
                 ? "(自动使用首个设备)"
                 : _wmServiceSettings.QueryDeviceId;
             WmServiceIsSimulated = _wmServiceSettings.IsSimulated;
+            WmAlarmDelta = _wmServiceSettings.DefaultWavelengthAlarmDeltaNm;
+
+            WmServiceChannelSpecs.Clear();
+            foreach (var spec in _wmServiceSettings.ChannelSpecs ?? [])
+                WmServiceChannelSpecs.Add(spec);
 
             var states = _pdDriverManager.ConnectionStates;
             int connectedCount = states.Count(kvp => kvp.Value);

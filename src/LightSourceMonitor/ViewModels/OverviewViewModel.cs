@@ -71,6 +71,12 @@ public partial class WavelengthRowViewModel : ObservableObject
     [ObservableProperty] private string _wavelengthDisplay = "---";
     [ObservableProperty] private string _lastUpdate = "--";
     [ObservableProperty] private bool _isOnline;
+
+    /// <summary>波长数值颜色：正常为浅色，超出 Spec 容差时为红色。</summary>
+    [ObservableProperty] private string _wavelengthForeground = "#E8E8F0";
+
+    /// <summary>悬停提示：标称波长、当前偏差与容差（避免与「相对 1310 的小数」混淆）。</summary>
+    [ObservableProperty] private string _wavelengthToolTip = "";
 }
 
 public partial class WbaMetricViewModel : ObservableObject
@@ -108,6 +114,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     private readonly IAcquisitionService _acquisitionService;
     private readonly IAlarmService _alarmService;
     private readonly DriverSettings _driverSettings;
+    private readonly WavelengthServiceSettings _wmServiceSettings;
     private readonly Dictionary<int, (ChannelCardViewModel card, double alarmDelta)> _channelMap = new();
     private readonly Dictionary<string, DeviceGroupViewModel> _deviceMap = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, WbaDeviceGroupViewModel> _wbaDeviceMap = new(StringComparer.OrdinalIgnoreCase);
@@ -125,13 +132,14 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     public ObservableCollection<WbaDeviceGroupViewModel> WbaDeviceGroups { get; } = new();
     public ObservableCollection<AlarmItemViewModel> RecentAlarms { get; } = new();
 
-    public OverviewViewModel(IServiceProvider services, IChannelCatalog channelCatalog, IAcquisitionService acquisitionService, IAlarmService alarmService, IOptions<DriverSettings> driverOptions)
+    public OverviewViewModel(IServiceProvider services, IChannelCatalog channelCatalog, IAcquisitionService acquisitionService, IAlarmService alarmService, IOptions<DriverSettings> driverOptions, IOptions<WavelengthServiceSettings> wmServiceOptions)
     {
         _services = services;
         _channelCatalog = channelCatalog;
         _acquisitionService = acquisitionService;
         _alarmService = alarmService;
         _driverSettings = driverOptions.Value;
+        _wmServiceSettings = wmServiceOptions.Value;
 
         _acquisitionService.DataAcquired += OnDataAcquired;
         _acquisitionService.WavelengthTableUpdated += OnWavelengthTableUpdated;
@@ -285,15 +293,52 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
             WavelengthRows.Clear();
             foreach (var r in snapshot.Rows)
             {
-                WavelengthRows.Add(new WavelengthRowViewModel
+                var rowVm = new WavelengthRowViewModel
                 {
                     ChannelIndex = r.ChannelIndex,
                     WavelengthDisplay = r.IsValid ? r.WavelengthNm.ToString("F3") : "---",
                     LastUpdate = snapshot.Timestamp.ToString("HH:mm:ss"),
                     IsOnline = r.IsValid
-                });
+                };
+                ApplyWavelengthRowAlarmVisual(rowVm, r);
+                WavelengthRows.Add(rowVm);
             }
         });
+    }
+
+    private void ApplyWavelengthRowAlarmVisual(WavelengthRowViewModel vm, WavelengthTableRow r)
+    {
+        if (!r.IsValid)
+        {
+            vm.WavelengthForeground = "#616161";
+            vm.WavelengthToolTip = "无有效读数";
+            return;
+        }
+
+        var spec = _wmServiceSettings.ResolveChannelSpec(r.ChannelIndex);
+        if (spec == null || !spec.IsEnabled || spec.SpecWavelengthNm <= 0)
+        {
+            vm.WavelengthForeground = "#E8E8F0";
+            vm.WavelengthToolTip = spec == null
+                ? "未配置该路 WavelengthService.ChannelSpecs"
+                : !spec.IsEnabled
+                    ? "该路 Spec 已禁用"
+                    : "该路未设置有效标称波长 (SpecWavelengthNm)";
+            return;
+        }
+
+        var deltaNm = _wmServiceSettings.GetEffectiveAlarmDeltaNm(spec);
+        if (deltaNm <= 0)
+        {
+            vm.WavelengthForeground = "#E8E8F0";
+            vm.WavelengthToolTip = $"标称 {spec.SpecWavelengthNm:F3} nm（容差未启用）";
+            return;
+        }
+
+        var dev = Math.Abs(r.WavelengthNm - spec.SpecWavelengthNm);
+        vm.WavelengthForeground = dev > deltaNm ? "#FF5252" : "#E8E8F0";
+        vm.WavelengthToolTip =
+            $"标称 {spec.SpecWavelengthNm:F3} nm\n偏差 {dev:F3} nm（相对本路标称）\n容差 ±{deltaNm:F3} nm\n{(dev > deltaNm ? "已超限" : "在容差内")}";
     }
 
     private void OnWbaTelemetryAcquired(IReadOnlyDictionary<string, WbaTelemetrySnapshot> snapshots)
@@ -329,7 +374,19 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         {
             string deviceSn = "";
             string channelName = $"CH{alarm.ChannelId}";
-            if (_channelMap.TryGetValue(alarm.ChannelId, out var entry))
+            if (WmAlarmChannelIds.IsWavelengthServiceAlarm(alarm.ChannelId)
+                && WmAlarmChannelIds.TryDecode(alarm.ChannelId, out var wmIdx))
+            {
+                var effectiveDevices = _driverSettings.GetEffectiveDevices();
+                deviceSn = string.IsNullOrWhiteSpace(_wmServiceSettings.QueryDeviceId)
+                    ? effectiveDevices.FirstOrDefault()?.DeviceSN ?? "WM"
+                    : _wmServiceSettings.QueryDeviceId.Trim();
+                var wmSpec = _wmServiceSettings.ResolveChannelSpec(wmIdx);
+                channelName = wmSpec is { ChannelName: var n } && !string.IsNullOrWhiteSpace(n)
+                    ? n.Trim()
+                    : $"路{wmIdx}";
+            }
+            else if (_channelMap.TryGetValue(alarm.ChannelId, out var entry))
             {
                 deviceSn = entry.card.DeviceSn;
                 channelName = entry.card.ChannelName;
