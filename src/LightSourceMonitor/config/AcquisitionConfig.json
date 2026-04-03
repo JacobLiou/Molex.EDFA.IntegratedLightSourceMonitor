@@ -1,0 +1,6 @@
+{
+  "samplingIntervalMs": 5000,
+  "wmSweepEveryN": 20,
+  "wbaSweepEveryN": 1,
+  "dbWriteEveryN": 10
+}

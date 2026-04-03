@@ -449,162 +449,250 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Acquisition Parameters Tab -->
-            <TabItem Header="采集参数">
-                <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,12,0,0">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
-                        <TextBlock Text="数据采集参数" Style="{StaticResource SectionHeader}"/>
-                        <TextBlock Text="调整采集频率和数据存储策略，修改后点击「应用」即时生效" Foreground="#9898B0" Margin="0,0,0,16"/>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+            <!-- 通用设置：采集 / 邮件 / TMS -->
+            <TabItem Header="通用设置">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Background="#23233D" CornerRadius="8" Padding="14" Margin="0,12,0,0">
+                        <StackPanel Margin="0,10,0,0">
+                            <Expander Header="采集参数"
+                                      IsExpanded="True"
+                                      Foreground="#E8E8F0"
+                                      Background="Transparent">
+                                <Border Background="#1B1B2F"
+                                        CornerRadius="8"
+                                        Padding="16"
+                                        Margin="0,8,0,8">
+                                    <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                        <TextBlock Text="调整 PD / WM / WBA 扫描节奏与落库频率，修改后点击「应用采集参数」即时生效并写入 config/AcquisitionConfig.json"
+                                                   Foreground="#9898B0"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,14" />
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="220" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="采集间隔 (ms):" Foreground="#9898B0" VerticalAlignment="Center"/>
-                                <TextBlock Text="每次PD功率采集的时间间隔" Foreground="#55556A" FontSize="11"/>
-                            </StackPanel>
-                            <hc:NumericUpDown Grid.Column="1" Value="{Binding SamplingIntervalMs}" 
-                                              Minimum="500" Maximum="60000" Increment="100" Width="160" HorizontalAlignment="Left"
-                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,12"/>
+                                            <StackPanel Margin="0,0,0,12">
+                                                <TextBlock Text="PD采集间隔 (ms)" Foreground="#E8E8F0" FontWeight="SemiBold" />
+                                                <TextBlock Text="每个采集周期内 PD 功率读取的时间间隔" Foreground="#55556A" FontSize="11" />
+                                            </StackPanel>
+                                            <hc:NumericUpDown Grid.Column="1"
+                                                                Value="{Binding SamplingIntervalMs}"
+                                                                Minimum="500"
+                                                                Maximum="60000"
+                                                                Increment="100"
+                                                                Width="180"
+                                                                HorizontalAlignment="Left"
+                                                                Style="{StaticResource NumericUpDownExtend}"
+                                                                Margin="0,0,0,12" />
 
-                            <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                                <TextBlock Text="波长计扫描频率 (每N次):" Foreground="#9898B0" VerticalAlignment="Center"/>
-                                <TextBlock Text="每N次PD采集执行一次WM扫描" Foreground="#55556A" FontSize="11"/>
-                            </StackPanel>
-                            <hc:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding WmSweepEveryN}" 
-                                              Minimum="1" Maximum="1000" Increment="1" Width="160" HorizontalAlignment="Left"
-                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,12"/>
+                                            <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                                                <TextBlock Text="波长计扫描频率 (每 N 次)" Foreground="#E8E8F0" FontWeight="SemiBold" />
+                                                <TextBlock Text="每 N 次 PD 采集执行一次 WM 表格扫描" Foreground="#55556A" FontSize="11" />
+                                            </StackPanel>
+                                            <hc:NumericUpDown Grid.Row="1"
+                                                                Grid.Column="1"
+                                                                Value="{Binding WmSweepEveryN}"
+                                                                Minimum="1"
+                                                                Maximum="1000"
+                                                                Increment="1"
+                                                                Width="180"
+                                                                HorizontalAlignment="Left"
+                                                                Style="{StaticResource NumericUpDownExtend}"
+                                                                Margin="0,0,0,12" />
 
-                            <StackPanel Grid.Row="2" Margin="0,0,0,12">
-                                <TextBlock Text="数据库写入频率 (每N次):" Foreground="#9898B0" VerticalAlignment="Center"/>
-                                <TextBlock Text="每N次采集写入一次数据库" Foreground="#55556A" FontSize="11"/>
-                            </StackPanel>
-                            <hc:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding DbWriteEveryN}" 
-                                              Minimum="1" Maximum="100" Increment="1" Width="160" HorizontalAlignment="Left"
-                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,12"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button Content="应用采集参数" Command="{Binding ApplyAcquisitionParamsCommand}"
-                                    Style="{StaticResource ButtonPrimary}" HorizontalAlignment="Left" Padding="16,6"/>
-                            <TextBlock Text="{Binding AcqParamsStatus}" Foreground="#00E676" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                                            <StackPanel Grid.Row="2" Margin="0,0,0,12">
+                                                <TextBlock Text="WBA扫描频率 (每 N 次)" Foreground="#E8E8F0" FontWeight="SemiBold" />
+                                                <TextBlock Text="每 N 个采集周期读取一次 WBA 遥测；1 表示与 PD 同频（例如均 5s 一次）" Foreground="#55556A" FontSize="11" />
+                                            </StackPanel>
+                                            <hc:NumericUpDown Grid.Row="2"
+                                                                Grid.Column="1"
+                                                                Value="{Binding WbaSweepEveryN}"
+                                                                Minimum="1"
+                                                                Maximum="1000"
+                                                                Increment="1"
+                                                                Width="180"
+                                                                HorizontalAlignment="Left"
+                                                                Style="{StaticResource NumericUpDownExtend}"
+                                                                Margin="0,0,0,12" />
+
+                                            <StackPanel Grid.Row="3" Margin="0,0,0,12">
+                                                <TextBlock Text="数据库写入频率 (每 N 次)" Foreground="#E8E8F0" FontWeight="SemiBold" />
+                                                <TextBlock Text="每 N 次采集批量写入一次 SQLite（趋势数据）" Foreground="#55556A" FontSize="11" />
+                                            </StackPanel>
+                                            <hc:NumericUpDown Grid.Row="3"
+                                                                Grid.Column="1"
+                                                                Value="{Binding DbWriteEveryN}"
+                                                                Minimum="1"
+                                                                Maximum="100"
+                                                                Increment="1"
+                                                                Width="180"
+                                                                HorizontalAlignment="Left"
+                                                                Style="{StaticResource NumericUpDownExtend}"
+                                                                Margin="0,0,0,12" />
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <Button Content="应用采集参数"
+                                                    Command="{Binding ApplyAcquisitionParamsCommand}"
+                                                    Style="{StaticResource ButtonPrimary}"
+                                                    HorizontalAlignment="Left"
+                                                    Padding="16,6" />
+                                            <TextBlock Text="{Binding AcqParamsStatus}"
+                                                       Foreground="#00E676"
+                                                       VerticalAlignment="Center"
+                                                       Margin="16,0,0,0"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Expander>
+
+                            <Expander Header="邮件通知"
+                                      IsExpanded="False"
+                                      Foreground="#E8E8F0"
+                                      Background="Transparent">
+                                <Border Background="#1B1B2F"
+                                        CornerRadius="8"
+                                        Padding="16"
+                                        Margin="0,8,0,8">
+                                    <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                        <TextBlock Text="通过 HTTP POST 调用企业邮件接口，报文格式为 To / Subject / Body；配置保存在 config/EmailConfig.json"
+                                                   Foreground="#9898B0"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,14" />
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="API 地址:" Foreground="#9898B0" VerticalAlignment="Center" />
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding EmailApiUrl}"
+                                                     hc:InfoElement.Placeholder="http://zh-tms-srv1.oplink.com.cn:8800/api/email"
+                                                     Style="{StaticResource TextBoxExtend}"
+                                                     Margin="0,0,0,8" />
+
+                                            <TextBlock Grid.Row="1" Text="收件人:" Foreground="#9898B0" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="1"
+                                                     Grid.Column="1"
+                                                     Text="{Binding Recipients}"
+                                                     hc:InfoElement.Placeholder="user1@example.com; user2@example.com"
+                                                     Style="{StaticResource TextBoxExtend}"
+                                                     Margin="0,0,0,8" />
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                            <Button Content="保存邮件配置"
+                                                    Command="{Binding SaveEmailSettingsCommand}"
+                                                    Style="{StaticResource ButtonPrimary}"
+                                                    Background="#334466"
+                                                    BorderBrush="#448AFF"
+                                                    HorizontalAlignment="Left"
+                                                    Padding="16,6"
+                                                    Margin="0,0,8,0" />
+                                            <Button Content="发送测试邮件"
+                                                    Command="{Binding TestEmailApiCommand}"
+                                                    Style="{StaticResource ButtonPrimary}"
+                                                    HorizontalAlignment="Left"
+                                                    Padding="16,6" />
+                                            <StackPanel Orientation="Horizontal"
+                                                        VerticalAlignment="Center"
+                                                        Margin="12,0,0,0">
+                                                <TextBlock Text="{Binding EmailTestStatusIcon}"
+                                                           Foreground="{Binding EmailTestStatusColor}"
+                                                           FontSize="16"
+                                                           FontWeight="Bold"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,6,0" />
+                                                <TextBlock Text="{Binding EmailTestStatusText}"
+                                                           Foreground="{Binding EmailTestStatusColor}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Expander>
+
+                            <Expander Header="TMS 对接"
+                                      IsExpanded="False"
+                                      Foreground="#E8E8F0"
+                                      Background="Transparent">
+                                <Border Background="#1B1B2F"
+                                        CornerRadius="8"
+                                        Padding="16"
+                                        Margin="0,8,0,8">
+                                    <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                        <TextBlock Text="测量数据上报 TMS；配置保存在 config/TmsConfig.json"
+                                                   Foreground="#9898B0"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,14" />
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="API 地址:" Foreground="#9898B0" VerticalAlignment="Center" />
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding TmsBaseUrl}"
+                                                     hc:InfoElement.Placeholder="https://tms.example.com/api"
+                                                     Style="{StaticResource TextBoxExtend}"
+                                                     Margin="0,0,0,8" />
+
+                                            <TextBlock Grid.Row="1" Text="API Key:" Foreground="#9898B0" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="1"
+                                                     Grid.Column="1"
+                                                     Text="{Binding TmsApiKey}"
+                                                     Style="{StaticResource TextBoxExtend}"
+                                                     Margin="0,0,0,8" />
+
+                                            <TextBlock Grid.Row="2" Text="上传间隔(s):" Foreground="#9898B0" VerticalAlignment="Center" />
+                                            <hc:NumericUpDown Grid.Row="2"
+                                                              Grid.Column="1"
+                                                              Value="{Binding TmsUploadIntervalSec}"
+                                                              Minimum="10"
+                                                              Maximum="3600"
+                                                              Width="180"
+                                                              HorizontalAlignment="Left"
+                                                              Style="{StaticResource NumericUpDownExtend}" />
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                            <Button Content="保存 TMS 配置"
+                                                    Command="{Binding SaveTmsSettingsCommand}"
+                                                    Style="{StaticResource ButtonPrimary}"
+                                                    Background="#334466"
+                                                    BorderBrush="#448AFF"
+                                                    HorizontalAlignment="Left"
+                                                    Padding="16,6"
+                                                    Margin="0,0,8,0" />
+                                            <Button Content="测试连接"
+                                                    Command="{Binding TestTmsConnectionCommand}"
+                                                    Style="{StaticResource ButtonPrimary}"
+                                                    HorizontalAlignment="Left"
+                                                    Padding="16,6" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Expander>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-            </TabItem>
-
-            <!-- Alarm Thresholds Tab -->
-            <TabItem Header="告警阈值">
-                <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,12,0,0">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
-                        <TextBlock Text="告警阈值配置" Style="{StaticResource SectionHeader}"/>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Text="PD功率报警阈值 (dB):" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <hc:NumericUpDown Grid.Column="1" Value="{Binding PdAlarmDelta}" Minimum="0.01" 
-                                              Maximum="10" Increment="0.01" Width="150" HorizontalAlignment="Left"
-                                              Style="{StaticResource NumericUpDownExtend}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="1" Text="WM波长报警阈值 (nm):" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <hc:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding WmAlarmDelta}" Minimum="0.001"
-                                              Maximum="1" Increment="0.001" Width="150" HorizontalAlignment="Left"
-                                              Style="{StaticResource NumericUpDownExtend}"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-            </TabItem>
-
-            <!-- Email Tab -->
-            <TabItem Header="邮件通知">
-                <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,12,0,0">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
-                        <TextBlock Text="HTTP 邮件接口配置" Style="{StaticResource SectionHeader}"/>
-                        <TextBlock Text="通过 HTTP POST 调用企业邮件接口，报文格式为 To / Subject / Body" Foreground="#9898B0" Margin="0,0,0,16"/>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Text="API 地址:" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding EmailApiUrl}" 
-                                     hc:InfoElement.Placeholder="http://zh-tms-srv1.oplink.com.cn:8800/api/email"
-                                     Style="{StaticResource TextBoxExtend}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="1" Text="收件人:" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Recipients}"
-                                     hc:InfoElement.Placeholder="user1@example.com; user2@example.com"
-                                     Style="{StaticResource TextBoxExtend}" Margin="0,0,0,8"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <Button Content="保存邮件配置" Command="{Binding SaveEmailSettingsCommand}"
-                                Style="{StaticResource ButtonPrimary}" Background="#334466" BorderBrush="#448AFF"
-                                HorizontalAlignment="Left" Padding="16,6" Margin="0,0,8,0"/>
-                            <Button Content="发送测试邮件" Command="{Binding TestEmailApiCommand}"
-                                    Style="{StaticResource ButtonPrimary}" HorizontalAlignment="Left" Padding="16,6"/>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                                <TextBlock Text="{Binding EmailTestStatusIcon}" Foreground="{Binding EmailTestStatusColor}"
-                                           FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding EmailTestStatusText}" Foreground="{Binding EmailTestStatusColor}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </TabItem>
-
-            <!-- TMS Tab -->
-            <TabItem Header="TMS 对接">
-                <Border Background="#23233D" CornerRadius="8" Padding="20" Margin="0,12,0,0">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
-                        <TextBlock Text="TMS 系统对接配置" Style="{StaticResource SectionHeader}"/>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Text="API 地址:" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding TmsBaseUrl}"
-                                     hc:InfoElement.Placeholder="https://tms.example.com/api"
-                                     Style="{StaticResource TextBoxExtend}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="1" Text="API Key:" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding TmsApiKey}"
-                                     Style="{StaticResource TextBoxExtend}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="2" Text="上传间隔(s):" Foreground="#9898B0" VerticalAlignment="Center"/>
-                            <hc:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding TmsUploadIntervalSec}"
-                                              Minimum="10" Maximum="3600" Width="150" HorizontalAlignment="Left"
-                                              Style="{StaticResource NumericUpDownExtend}"/>
-                        </Grid>
-                        <Button Content="测试连接" Command="{Binding TestTmsConnectionCommand}" Margin="0,12,0,0"
-                                Style="{StaticResource ButtonPrimary}" HorizontalAlignment="Left" Padding="16,6"/>
-                    </StackPanel>
-                </Border>
+                    </Border>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </ScrollViewer>

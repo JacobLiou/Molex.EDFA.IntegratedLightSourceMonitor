@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Models;
+using LightSourceMonitor.Services.Config;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,21 +14,26 @@ public class TmsUploadService : ITmsService
     private readonly IServiceProvider _services;
     private readonly ILogger<TmsUploadService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly IRuntimeJsonConfigService _runtimeJsonConfig;
 
-    public TmsUploadService(IServiceProvider services, ILogger<TmsUploadService> logger)
+    public TmsUploadService(
+        IServiceProvider services,
+        ILogger<TmsUploadService> logger,
+        IRuntimeJsonConfigService runtimeJsonConfig)
     {
         _services = services;
         _logger = logger;
         _httpClient = new HttpClient();
+        _runtimeJsonConfig = runtimeJsonConfig;
     }
 
     public async Task UploadPendingRecordsAsync(CancellationToken cancellationToken = default)
     {
         using var scope = _services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-        var tmsConfig = await db.TmsConfigs.FirstOrDefaultAsync(cancellationToken);
+        var tmsConfig = await _runtimeJsonConfig.LoadTmsAsync(cancellationToken);
 
-        if (tmsConfig == null || !tmsConfig.IsEnabled || string.IsNullOrWhiteSpace(tmsConfig.BaseUrl))
+        if (!tmsConfig.IsEnabled || string.IsNullOrWhiteSpace(tmsConfig.BaseUrl))
             return;
 
         var pending = await db.MeasurementRecords
@@ -77,11 +83,9 @@ public class TmsUploadService : ITmsService
 
     public async Task<bool> TestConnectionAsync()
     {
-        using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-        var tmsConfig = await db.TmsConfigs.FirstOrDefaultAsync();
+        var tmsConfig = await _runtimeJsonConfig.LoadTmsAsync();
 
-        if (tmsConfig == null || string.IsNullOrWhiteSpace(tmsConfig.BaseUrl))
+        if (string.IsNullOrWhiteSpace(tmsConfig.BaseUrl))
             return false;
 
         try

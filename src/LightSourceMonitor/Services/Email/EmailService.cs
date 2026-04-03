@@ -1,24 +1,25 @@
 using System.Net.Http;
 using System.Net.Http.Json;
-using LightSourceMonitor.Data;
 using LightSourceMonitor.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using LightSourceMonitor.Services.Config;
 using Microsoft.Extensions.Logging;
 
 namespace LightSourceMonitor.Services.Email;
 
 public class EmailService : IEmailService
 {
-    private readonly IServiceProvider _services;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<EmailService> _logger;
+    private readonly IRuntimeJsonConfigService _runtimeJsonConfig;
 
-    public EmailService(IServiceProvider services, IHttpClientFactory httpClientFactory, ILogger<EmailService> logger)
+    public EmailService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<EmailService> logger,
+        IRuntimeJsonConfigService runtimeJsonConfig)
     {
-        _services = services;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _runtimeJsonConfig = runtimeJsonConfig;
     }
 
     public async Task SendAlarmEmailAsync(
@@ -107,9 +108,7 @@ public class EmailService : IEmailService
     {
         try
         {
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-            return await db.EmailConfigs.FirstOrDefaultAsync();
+            return await _runtimeJsonConfig.LoadEmailAsync();
         }
         catch
         {

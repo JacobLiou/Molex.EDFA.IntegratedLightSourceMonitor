@@ -4,6 +4,7 @@ using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Alarm;
 using LightSourceMonitor.Services.Channels;
+using LightSourceMonitor.Services.Config;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ public class AcquisitionService : IAcquisitionService
     private readonly IWavelengthServiceDriver _wmServiceDriver;
     private readonly DriverSettings _driverSettings;
     private readonly WavelengthServiceSettings _wmServiceSettings;
+    private readonly IRuntimeJsonConfigService _runtimeJsonConfig;
     private CancellationTokenSource? _cts;
     private Task? _runningTask;
     private int _sampleCount;
@@ -48,6 +50,7 @@ public class AcquisitionService : IAcquisitionService
 
     public int SamplingIntervalMs { get; set; } = 5000;
     public int WmSweepEveryN { get; set; } = 20;
+    public int WbaSweepEveryN { get; set; } = 1;
     public int DbWriteEveryN { get; set; } = 20;
 
     public AcquisitionService(
@@ -60,7 +63,8 @@ public class AcquisitionService : IAcquisitionService
         IWavelengthMeterDriver wmDriver,
         IWavelengthServiceDriver wmServiceDriver,
         IOptions<DriverSettings> driverOptions,
-        IOptions<WavelengthServiceSettings> wmServiceOptions)
+        IOptions<WavelengthServiceSettings> wmServiceOptions,
+        IRuntimeJsonConfigService runtimeJsonConfig)
     {
         _services = services;
         _logger = logger;
@@ -72,6 +76,7 @@ public class AcquisitionService : IAcquisitionService
         _wmServiceDriver = wmServiceDriver;
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
+        _runtimeJsonConfig = runtimeJsonConfig;
 
         LoadAcquisitionConfigAsync().SafeFireAndForget("AcquisitionService.LoadAcquisitionConfig");
     }
@@ -80,20 +85,15 @@ public class AcquisitionService : IAcquisitionService
     {
         try
         {
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-
-            var acqConfig = await db.AcquisitionConfigs.FirstOrDefaultAsync();
-            if (acqConfig != null)
-            {
-                SamplingIntervalMs = acqConfig.SamplingIntervalMs;
-                WmSweepEveryN = acqConfig.WmSweepEveryN;
-                DbWriteEveryN = acqConfig.DbWriteEveryN;
-            }
+            var acqConfig = await _runtimeJsonConfig.LoadAcquisitionAsync();
+            SamplingIntervalMs = acqConfig.SamplingIntervalMs;
+            WmSweepEveryN = acqConfig.WmSweepEveryN;
+            WbaSweepEveryN = acqConfig.WbaSweepEveryN > 0 ? acqConfig.WbaSweepEveryN : 1;
+            DbWriteEveryN = acqConfig.DbWriteEveryN;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "WM driver initialization failed");
+            _logger.LogWarning(ex, "Failed to load acquisition config from JSON");
         }
     }
 
@@ -189,17 +189,21 @@ public class AcquisitionService : IAcquisitionService
             try
             {
                 var wmSweepEveryN = WmSweepEveryN <= 0 ? MinSweepEveryN : WmSweepEveryN;
+                var wbaSweepEveryN = WbaSweepEveryN <= 0 ? MinSweepEveryN : WbaSweepEveryN;
                 var dbWriteEveryN = DbWriteEveryN <= 0 ? MinDbWriteEveryN : DbWriteEveryN;
 
-                if (samplingIntervalMs != SamplingIntervalMs || wmSweepEveryN != WmSweepEveryN || dbWriteEveryN != DbWriteEveryN)
+                if (samplingIntervalMs != SamplingIntervalMs || wmSweepEveryN != WmSweepEveryN
+                    || wbaSweepEveryN != WbaSweepEveryN || dbWriteEveryN != DbWriteEveryN)
                 {
                     _logger.LogWarning(
-                        "Invalid acquisition params detected (interval={Interval}, wmEvery={WmN}, dbEvery={DbN}), fallback applied (interval={SafeInterval}, wmEvery={SafeWmN}, dbEvery={SafeDbN})",
+                        "Invalid acquisition params detected (interval={Interval}, wmEvery={WmN}, wbaEvery={WbaN}, dbEvery={DbN}), fallback applied (interval={SafeInterval}, wmEvery={SafeWmN}, wbaEvery={SafeWbaN}, dbEvery={SafeDbN})",
                         SamplingIntervalMs,
                         WmSweepEveryN,
+                        WbaSweepEveryN,
                         DbWriteEveryN,
                         samplingIntervalMs,
                         wmSweepEveryN,
+                        wbaSweepEveryN,
                         dbWriteEveryN);
                 }
 
@@ -221,6 +225,7 @@ public class AcquisitionService : IAcquisitionService
 
                 // Sweep WM table at configured cadence; allows first-cycle data when wmSweepEveryN=1.
                 bool doWmSweep = _sampleCount % wmSweepEveryN == 0;
+                bool doWbaSweep = _sampleCount % wbaSweepEveryN == 0;
                 var batch = new Dictionary<int, MeasurementRecord>();
                 var wbaBatch = new Dictionary<string, WbaTelemetrySnapshot>(StringComparer.OrdinalIgnoreCase);
 
@@ -284,11 +289,13 @@ public class AcquisitionService : IAcquisitionService
                     }
                 }
 
-                // Separate WBA acquisition loop (independent from PD)
-                foreach (var wbaSn in _wbaDeviceSns)
+                if (doWbaSweep)
                 {
-                    if (_wbaDeviceManager.TryReadTelemetry(wbaSn, out var wbaTelemetry) && wbaTelemetry != null)
-                        wbaBatch[wbaSn] = wbaTelemetry;
+                    foreach (var wbaSn in _wbaDeviceSns)
+                    {
+                        if (_wbaDeviceManager.TryReadTelemetry(wbaSn, out var wbaTelemetry) && wbaTelemetry != null)
+                            wbaBatch[wbaSn] = wbaTelemetry;
+                    }
                 }
 
                 if (batch.Count == 0)

@@ -14,6 +14,7 @@ using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Alarm;
 using LightSourceMonitor.Services.Channels;
+using LightSourceMonitor.Services.Config;
 using LightSourceMonitor.Services.Email;
 using LightSourceMonitor.Services.Retention;
 using LightSourceMonitor.Services.Tms;
@@ -141,6 +142,7 @@ public partial class App : Application
                 }
                 services.AddSingleton<IAlarmService, AlarmService>();
                 services.AddSingleton<IChannelCatalog, ChannelCatalog>();
+                services.AddSingleton<IRuntimeJsonConfigService, RuntimeJsonConfigService>();
                 services.AddSingleton<IEmailService, EmailService>();
                 services.AddSingleton<IAcquisitionService, AcquisitionService>();
                 services.AddSingleton<ITmsService, TmsUploadService>();
@@ -166,11 +168,8 @@ public partial class App : Application
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
             await db.Database.MigrateAsync();
             var repaired = await LegacySchemaRepair.EnsureNoLegacyLaserChannelForeignKeysAsync(db);
-            var repairedAcq = await LegacySchemaRepair.EnsureAcquisitionConfigTableAsync(db);
             if (repaired)
                 Log.Warning("Detected legacy LaserChannels FK constraints in existing DB; schema was repaired automatically.");
-            if (repairedAcq)
-                Log.Warning("Detected missing AcquisitionConfigs table in existing DB; schema was repaired automatically.");
             Log.Information("Database migrated successfully");
         }
 

@@ -1,16 +1,15 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LightSourceMonitor.Data;
 using LightSourceMonitor.Drivers;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Channels;
+using LightSourceMonitor.Services.Config;
 using LightSourceMonitor.Services.Email;
 using LightSourceMonitor.Services.Tms;
 using HandyControl.Controls;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,12 +29,12 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IWbaDeviceManager _wbaDeviceManager;
     private readonly DriverSettings _driverSettings;
     private readonly WavelengthServiceSettings _wmServiceSettings;
+    private readonly IRuntimeJsonConfigService _runtimeJsonConfig;
     private readonly ILogger<SettingsViewModel> _logger;
 
     [ObservableProperty] private string _emailApiUrl = "";
     [ObservableProperty] private string _recipients = "";
 
-    [ObservableProperty] private double _pdAlarmDelta = 0.15;
     [ObservableProperty] private double _wmAlarmDelta = 0.05;
 
     [ObservableProperty] private string _tmsBaseUrl = "";
@@ -44,6 +43,7 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private int _samplingIntervalMs = 5000;
     [ObservableProperty] private int _wmSweepEveryN = 36;
+    [ObservableProperty] private int _wbaSweepEveryN = 1;
     [ObservableProperty] private int _dbWriteEveryN = 10;
 
     [ObservableProperty] private string _statusMessage = "";
@@ -75,6 +75,7 @@ public partial class SettingsViewModel : ObservableObject
                              IWbaDeviceManager wbaDeviceManager,
                              IOptions<DriverSettings> driverOptions,
                              IOptions<WavelengthServiceSettings> wmServiceOptions,
+                             IRuntimeJsonConfigService runtimeJsonConfig,
                              ILogger<SettingsViewModel> logger)
     {
         _services = services;
@@ -85,6 +86,7 @@ public partial class SettingsViewModel : ObservableObject
         _wbaDeviceManager = wbaDeviceManager;
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
+        _runtimeJsonConfig = runtimeJsonConfig;
         _logger = logger;
         LoadSettingsAsync().SafeFireAndForget("SettingsViewModel.LoadSettings");
     }
@@ -93,31 +95,20 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            var email = await _runtimeJsonConfig.LoadEmailAsync();
+            EmailApiUrl = email.ApiUrl;
+            Recipients = email.Recipients;
 
-            var email = await db.EmailConfigs.FirstOrDefaultAsync();
-            if (email != null)
-            {
-                EmailApiUrl = email.ApiUrl;
-                Recipients = email.Recipients;
-            }
+            var tms = await _runtimeJsonConfig.LoadTmsAsync();
+            TmsBaseUrl = tms.BaseUrl;
+            TmsApiKey = tms.ApiKey;
+            TmsUploadIntervalSec = tms.UploadIntervalSec;
 
-            var tms = await db.TmsConfigs.FirstOrDefaultAsync();
-            if (tms != null)
-            {
-                TmsBaseUrl = tms.BaseUrl;
-                TmsApiKey = tms.ApiKey;
-                TmsUploadIntervalSec = tms.UploadIntervalSec;
-            }
-
-            var acqConfig = await db.AcquisitionConfigs.FirstOrDefaultAsync();
-            if (acqConfig != null)
-            {
-                SamplingIntervalMs = acqConfig.SamplingIntervalMs;
-                WmSweepEveryN = acqConfig.WmSweepEveryN;
-                DbWriteEveryN = acqConfig.DbWriteEveryN;
-            }
+            var acqConfig = await _runtimeJsonConfig.LoadAcquisitionAsync();
+            SamplingIntervalMs = acqConfig.SamplingIntervalMs;
+            WmSweepEveryN = acqConfig.WmSweepEveryN;
+            WbaSweepEveryN = acqConfig.WbaSweepEveryN > 0 ? acqConfig.WbaSweepEveryN : 1;
+            DbWriteEveryN = acqConfig.DbWriteEveryN;
 
             var channels = _channelCatalog.GetAllChannels()
                 .OrderBy(c => c.DeviceSN, StringComparer.OrdinalIgnoreCase)
@@ -172,6 +163,7 @@ public partial class SettingsViewModel : ObservableObject
             IsAcquisitionRunning = acq.IsRunning;
             SamplingIntervalMs = acq.SamplingIntervalMs;
             WmSweepEveryN = acq.WmSweepEveryN;
+            WbaSweepEveryN = acq.WbaSweepEveryN > 0 ? acq.WbaSweepEveryN : 1;
             DbWriteEveryN = acq.DbWriteEveryN;
         }
         catch (Exception ex)
@@ -185,23 +177,19 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+            var email = await _runtimeJsonConfig.LoadEmailAsync();
+            email.ApiUrl = EmailApiUrl.Trim();
+            email.Recipients = Recipients.Trim();
+            await _runtimeJsonConfig.SaveEmailAsync(email);
 
-            var email = await db.EmailConfigs.FirstOrDefaultAsync() ?? new EmailConfig();
-            email.ApiUrl = EmailApiUrl;
-            email.Recipients = Recipients;
-            if (email.Id == 0) db.EmailConfigs.Add(email);
-
-            var tms = await db.TmsConfigs.FirstOrDefaultAsync() ?? new TmsConfig();
-            tms.BaseUrl = TmsBaseUrl;
-            tms.ApiKey = TmsApiKey;
+            var tms = await _runtimeJsonConfig.LoadTmsAsync();
+            tms.BaseUrl = TmsBaseUrl.Trim();
+            tms.ApiKey = TmsApiKey.Trim();
             tms.UploadIntervalSec = TmsUploadIntervalSec;
             tms.IsEnabled = !string.IsNullOrWhiteSpace(TmsBaseUrl);
-            if (tms.Id == 0) db.TmsConfigs.Add(tms);
+            await _runtimeJsonConfig.SaveTmsAsync(tms);
 
-            await db.SaveChangesAsync();
-            StatusMessage = "设置已保存";
+            StatusMessage = "设置已保存（已写入 config 目录 JSON）";
         }
         catch (Exception ex)
         {
@@ -281,22 +269,10 @@ public partial class SettingsViewModel : ObservableObject
 
     private async Task PersistEmailSettingsAsync()
     {
-        using var scope = _services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-        var email = await db.EmailConfigs.FirstOrDefaultAsync() ?? new EmailConfig();
-
+        var email = await _runtimeJsonConfig.LoadEmailAsync();
         email.ApiUrl = EmailApiUrl.Trim();
         email.Recipients = Recipients.Trim();
-        email.SmtpPort = 0;
-        email.Username = string.Empty;
-        email.EncryptedPassword = string.Empty;
-        email.FromAddress = string.Empty;
-        email.UseSsl = false;
-
-        if (email.Id == 0)
-            db.EmailConfigs.Add(email);
-
-        await db.SaveChangesAsync();
+        await _runtimeJsonConfig.SaveEmailAsync(email);
     }
 
     private bool ValidateEmailConfig(out string error)
@@ -340,6 +316,26 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task SaveTmsSettings()
+    {
+        try
+        {
+            var tms = await _runtimeJsonConfig.LoadTmsAsync();
+            tms.BaseUrl = TmsBaseUrl.Trim();
+            tms.ApiKey = TmsApiKey.Trim();
+            tms.UploadIntervalSec = TmsUploadIntervalSec;
+            tms.IsEnabled = !string.IsNullOrWhiteSpace(TmsBaseUrl);
+            await _runtimeJsonConfig.SaveTmsAsync(tms);
+            StatusMessage = "TMS 配置已保存（config/TmsConfig.json）";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save TMS settings");
+            StatusMessage = "TMS 保存失败: " + ex.Message;
+        }
+    }
+
+    [RelayCommand]
     private async Task ApplyAcquisitionParams()
     {
         try
@@ -349,23 +345,25 @@ public partial class SettingsViewModel : ObservableObject
             // Prevent invalid values from breaking acquisition loop modulo operations.
             SamplingIntervalMs = Math.Max(MinSamplingIntervalMs, SamplingIntervalMs);
             WmSweepEveryN = Math.Max(MinCycleEveryN, WmSweepEveryN);
+            WbaSweepEveryN = Math.Max(MinCycleEveryN, WbaSweepEveryN);
             DbWriteEveryN = Math.Max(MinCycleEveryN, DbWriteEveryN);
 
             acq.SamplingIntervalMs = SamplingIntervalMs;
             acq.WmSweepEveryN = WmSweepEveryN;
+            acq.WbaSweepEveryN = WbaSweepEveryN;
             acq.DbWriteEveryN = DbWriteEveryN;
-            AcqParamsStatus = $"已应用 — 间隔{SamplingIntervalMs}ms, WM每{WmSweepEveryN}次, DB每{DbWriteEveryN}次";
-            _logger.LogInformation("Acquisition params updated: interval={Interval}ms, wmEvery={WmN}, dbEvery={DbN}",
-                SamplingIntervalMs, WmSweepEveryN, DbWriteEveryN);
+            AcqParamsStatus = $"已应用 — PD间隔{SamplingIntervalMs}ms, WM每{WmSweepEveryN}次, WBA每{WbaSweepEveryN}次, DB每{DbWriteEveryN}次";
+            _logger.LogInformation(
+                "Acquisition params updated: interval={Interval}ms, wmEvery={WmN}, wbaEvery={WbaN}, dbEvery={DbN}",
+                SamplingIntervalMs, WmSweepEveryN, WbaSweepEveryN, DbWriteEveryN);
 
-            using var scope = _services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-            var acqConfig = await db.AcquisitionConfigs.FirstOrDefaultAsync() ?? new AcquisitionConfig();
-            acqConfig.SamplingIntervalMs = SamplingIntervalMs;
-            acqConfig.WmSweepEveryN = WmSweepEveryN;
-            acqConfig.DbWriteEveryN = DbWriteEveryN;
-            if (acqConfig.Id == 0) db.AcquisitionConfigs.Add(acqConfig);
-            await db.SaveChangesAsync();
+            await _runtimeJsonConfig.SaveAcquisitionAsync(new AcquisitionConfig
+            {
+                SamplingIntervalMs = SamplingIntervalMs,
+                WmSweepEveryN = WmSweepEveryN,
+                WbaSweepEveryN = WbaSweepEveryN,
+                DbWriteEveryN = DbWriteEveryN
+            });
         }
         catch (Exception ex)
         {

@@ -1,0 +1,6 @@
+{
+  "baseUrl": "http://zh-tms-srv1.oplink.com.cn:8800/api/",
+  "apiKey": "",
+  "uploadIntervalSec": 300,
+  "isEnabled": false
+}

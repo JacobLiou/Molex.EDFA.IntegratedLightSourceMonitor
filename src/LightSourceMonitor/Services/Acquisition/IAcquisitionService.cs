@@ -9,6 +9,7 @@ public interface IAcquisitionService
     IReadOnlyDictionary<string, bool> PdDeviceStates { get; }
     int SamplingIntervalMs { get; set; }
     int WmSweepEveryN { get; set; }
+    int WbaSweepEveryN { get; set; }
     int DbWriteEveryN { get; set; }
     event Action<Dictionary<int, MeasurementRecord>>? DataAcquired;
     event Action<WavelengthTableSnapshot>? WavelengthTableUpdated;
