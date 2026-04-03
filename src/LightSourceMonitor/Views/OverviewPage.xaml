@@ -220,7 +220,6 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="序号" Binding="{Binding ChannelIndex}" Width="56"/>
                             <DataGridTextColumn Header="波长 nm" Binding="{Binding WavelengthDisplay}" Width="*"/>
-                            <DataGridTextColumn Header="功率 dBm" Binding="{Binding PowerDisplay}" Width="*"/>
                             <DataGridTextColumn Header="更新时间" Binding="{Binding LastUpdate}" Width="88"/>
                         </DataGrid.Columns>
                     </DataGrid>

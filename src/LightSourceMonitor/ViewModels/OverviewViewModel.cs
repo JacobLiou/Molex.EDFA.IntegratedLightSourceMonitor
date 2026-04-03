@@ -69,7 +69,6 @@ public partial class WavelengthRowViewModel : ObservableObject
 {
     [ObservableProperty] private int _channelIndex;
     [ObservableProperty] private string _wavelengthDisplay = "---";
-    [ObservableProperty] private string _powerDisplay = "---";
     [ObservableProperty] private string _lastUpdate = "--";
     [ObservableProperty] private bool _isOnline;
 }
@@ -290,7 +289,6 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 {
                     ChannelIndex = r.ChannelIndex,
                     WavelengthDisplay = r.IsValid ? r.WavelengthNm.ToString("F3") : "---",
-                    PowerDisplay = r.IsValid ? r.WmPowerDbm.ToString("F2") : "---",
                     LastUpdate = snapshot.Timestamp.ToString("HH:mm:ss"),
                     IsOnline = r.IsValid
                 });
