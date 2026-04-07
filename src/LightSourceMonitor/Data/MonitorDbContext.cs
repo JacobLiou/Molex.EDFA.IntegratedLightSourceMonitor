@@ -7,6 +7,7 @@ public class MonitorDbContext : DbContext
 {
     public DbSet<MeasurementRecord> MeasurementRecords => Set<MeasurementRecord>();
     public DbSet<WmMeasurementRecord> WmMeasurementRecords => Set<WmMeasurementRecord>();
+    public DbSet<WbaMeasurementRecord> WbaMeasurementRecords => Set<WbaMeasurementRecord>();
     public DbSet<AlarmEvent> AlarmEvents => Set<AlarmEvent>();
 
     public MonitorDbContext(DbContextOptions<MonitorDbContext> options) : base(options)
@@ -25,6 +26,11 @@ public class MonitorDbContext : DbContext
         modelBuilder.Entity<WmMeasurementRecord>(entity =>
         {
             entity.HasIndex(e => new { e.QueryDeviceId, e.ChannelIndex, e.Timestamp });
+        });
+
+        modelBuilder.Entity<WbaMeasurementRecord>(entity =>
+        {
+            entity.HasIndex(e => new { e.DeviceSN, e.Timestamp });
         });
 
         modelBuilder.Entity<AlarmEvent>(entity =>

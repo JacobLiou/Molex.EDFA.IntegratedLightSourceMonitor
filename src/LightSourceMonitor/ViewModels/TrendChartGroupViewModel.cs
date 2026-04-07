@@ -5,7 +5,8 @@ using LiveChartsCore.SkiaSharpView;
 
 namespace LightSourceMonitor.ViewModels;
 
-public partial class WmTrendGroupViewModel : ObservableObject
+/// <summary>趋势页多图分组（WM 波段 / WBA 设备等）。</summary>
+public partial class TrendChartGroupViewModel : ObservableObject
 {
     [ObservableProperty] private string _title = "";
 

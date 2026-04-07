@@ -315,7 +315,17 @@ public class AcquisitionService : IAcquisitionService
                     }
 
                     if (wbaBatch.Count > 0)
+                    {
                         WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
+                        try
+                        {
+                            await PersistWbaBatchAsync(db, wbaBatch, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to persist WBA trend batch");
+                        }
+                    }
 
                     _sampleCount++;
 
@@ -343,7 +353,17 @@ public class AcquisitionService : IAcquisitionService
                 }
 
                 if (wbaBatch.Count > 0)
+                {
                     WbaTelemetryAcquired.SafeInvoke(wbaBatch, nameof(WbaTelemetryAcquired));
+                    try
+                    {
+                        await PersistWbaBatchAsync(db, wbaBatch, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to persist WBA trend batch");
+                    }
+                }
 
                 _sampleCount++;
 
@@ -445,6 +465,35 @@ public class AcquisitionService : IAcquisitionService
 
         db.WmMeasurementRecords.AddRange(list);
         await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task PersistWbaBatchAsync(MonitorDbContext db,
+        IReadOnlyDictionary<string, WbaTelemetrySnapshot> batch, CancellationToken ct)
+    {
+        foreach (var kvp in batch)
+        {
+            var t = kvp.Value;
+            if (t.Temperatures.Length < 4 || t.Voltages.Length < 4)
+                continue;
+
+            db.WbaMeasurementRecords.Add(new WbaMeasurementRecord
+            {
+                Timestamp = t.Timestamp,
+                DeviceSN = string.IsNullOrWhiteSpace(t.DeviceSN) ? kvp.Key : t.DeviceSN,
+                Temperature0 = t.Temperatures[0],
+                Temperature1 = t.Temperatures[1],
+                Temperature2 = t.Temperatures[2],
+                Temperature3 = t.Temperatures[3],
+                Voltage0 = t.Voltages[0],
+                Voltage1 = t.Voltages[1],
+                Voltage2 = t.Voltages[2],
+                Voltage3 = t.Voltages[3],
+                AtmospherePressure = t.AtmospherePressure
+            });
+        }
+
+        if (batch.Count > 0)
+            await db.SaveChangesAsync(ct);
     }
 
     private async Task<WavelengthTableSnapshot> BuildWavelengthTableSnapshotAsync(DateTime now, CancellationToken ct)

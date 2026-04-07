@@ -21,6 +21,15 @@ public interface ITrendService
         DateTime to,
         int maxPointsPerSeries = 2000);
 
+    /// <summary>
+    /// 按 WBA 设备 SN 返回时间序列（每台设备单独降采样）。
+    /// </summary>
+    Task<IReadOnlyDictionary<string, IReadOnlyList<WbaMeasurementRecord>>> GetWbaTrendByDevicesAsync(
+        IReadOnlyList<string> deviceSns,
+        DateTime from,
+        DateTime to,
+        int maxPointsPerDevice = 2000);
+
     Task CleanupOldDataAsync(int retentionDays = 30);
 }
 
@@ -104,6 +113,49 @@ public class TrendService : ITrendService
                 : LttbDownsample(list, maxPointsPerSeries,
                     static r => r.Timestamp.Ticks,
                     static r => r.WavelengthNm);
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<WbaMeasurementRecord>>> GetWbaTrendByDevicesAsync(
+        IReadOnlyList<string> deviceSns,
+        DateTime from,
+        DateTime to,
+        int maxPointsPerDevice = 2000)
+    {
+        var result = new Dictionary<string, IReadOnlyList<WbaMeasurementRecord>>(StringComparer.OrdinalIgnoreCase);
+        if (deviceSns == null || deviceSns.Count == 0)
+            return result;
+
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Data.MonitorDbContext>();
+
+        var all = await db.WbaMeasurementRecords
+            .Where(r => r.Timestamp >= from && r.Timestamp <= to)
+            .OrderBy(r => r.DeviceSN)
+            .ThenBy(r => r.Timestamp)
+            .ToListAsync();
+
+        foreach (var sn in deviceSns)
+        {
+            if (string.IsNullOrWhiteSpace(sn))
+                continue;
+
+            var rows = all
+                .Where(r => string.Equals(r.DeviceSN, sn, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (rows.Count == 0)
+                continue;
+
+            var sampled = rows.Count <= maxPointsPerDevice
+                ? rows
+                : LttbDownsample(rows, maxPointsPerDevice,
+                    static r => r.Timestamp.Ticks,
+                    static r => (r.Temperature0 + r.Temperature1 + r.Temperature2 + r.Temperature3) / 4.0);
+
+            result[sn] = sampled;
         }
 
         return result;
@@ -218,5 +270,24 @@ public class TrendService : ITrendService
             Log.Information("Data retention: deleted {Count} old MeasurementRecords", totalPd);
         if (totalWm > 0)
             Log.Information("Data retention: deleted {Count} old WmMeasurementRecords", totalWm);
+
+        var totalWba = 0;
+        while (true)
+        {
+            var batch = await db.WbaMeasurementRecords
+                .Where(r => r.Timestamp < cutoff)
+                .Take(batchSize)
+                .ToListAsync();
+
+            if (batch.Count == 0)
+                break;
+
+            db.WbaMeasurementRecords.RemoveRange(batch);
+            await db.SaveChangesAsync();
+            totalWba += batch.Count;
+        }
+
+        if (totalWba > 0)
+            Log.Information("Data retention: deleted {Count} old WbaMeasurementRecords", totalWba);
     }
 }

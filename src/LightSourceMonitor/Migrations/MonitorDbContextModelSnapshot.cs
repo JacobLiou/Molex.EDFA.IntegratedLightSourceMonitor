@@ -119,6 +119,53 @@ namespace LightSourceMonitor.Migrations
                     b.ToTable("WmMeasurementRecords");
                 });
 
+            modelBuilder.Entity("LightSourceMonitor.Models.WbaMeasurementRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("AtmospherePressure")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("DeviceSN")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Temperature0")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Temperature1")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Temperature2")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Temperature3")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Voltage0")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Voltage1")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Voltage2")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Voltage3")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceSN", "Timestamp");
+
+                    b.ToTable("WbaMeasurementRecords");
+                });
+
 #pragma warning restore 612, 618
         }
     }

@@ -18,26 +18,26 @@ public partial class TrendPage : UserControl
     {
         if (DataContext is not TrendViewModel vm) return;
 
-        if (vm.SelectedTrendSubTabIndex == 2)
-        {
-            vm.StatusText = "WBA 趋势未实现，无法导出 PNG";
-            return;
-        }
-
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
             Filter = "PNG Image|*.png",
             DefaultExt = ".png",
-            FileName = vm.SelectedTrendSubTabIndex == 0
-                ? $"trend_pd_{DateTime.Now:yyyyMMdd_HHmmss}.png"
-                : $"trend_wm_{DateTime.Now:yyyyMMdd_HHmmss}.png"
+            FileName = vm.SelectedTrendSubTabIndex switch
+            {
+                0 => $"trend_pd_{DateTime.Now:yyyyMMdd_HHmmss}.png",
+                1 => $"trend_wm_{DateTime.Now:yyyyMMdd_HHmmss}.png",
+                _ => $"trend_wba_{DateTime.Now:yyyyMMdd_HHmmss}.png"
+            }
         };
 
         if (dialog.ShowDialog() != true) return;
 
-        var target = vm.SelectedTrendSubTabIndex == 0
-            ? (FrameworkElement)PdChartHost
-            : WmChartsHost;
+        var target = vm.SelectedTrendSubTabIndex switch
+        {
+            0 => (FrameworkElement)PdChartHost,
+            1 => WmChartsHost,
+            _ => WbaChartsHost
+        };
 
         try
         {

@@ -5,7 +5,7 @@
              xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
              xmlns:vm="clr-namespace:LightSourceMonitor.ViewModels">
     <UserControl.Resources>
-        <DataTemplate x:Key="WmGroupChartTemplate" DataType="{x:Type vm:WmTrendGroupViewModel}">
+        <DataTemplate x:Key="TrendGroupChartTemplate" DataType="{x:Type vm:TrendChartGroupViewModel}">
             <Border Margin="0,0,0,16" Background="#1B1B2F" CornerRadius="8" Padding="12">
                 <StackPanel>
                     <TextBlock Text="{Binding Title}" Foreground="#E8E8F0" FontWeight="SemiBold" Margin="0,0,0,8"/>
@@ -78,7 +78,7 @@
                                   Margin="0,0,0,12"/>
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemTemplate="{StaticResource WmGroupChartTemplate}"
+                            <ItemsControl ItemTemplate="{StaticResource TrendGroupChartTemplate}"
                                           ItemsSource="{Binding WmTrendGroups}"/>
                         </ScrollViewer>
                     </Grid>
@@ -86,13 +86,25 @@
             </TabItem>
 
             <TabItem Header="WBA">
-                <Border x:Name="WbaPlaceholderHost" Background="#23233D" CornerRadius="8" Padding="24" Margin="0,8,0,0">
-                    <TextBlock Text="WBA 趋势图预留，后续版本实现。"
-                               Foreground="#9898B0"
-                               TextWrapping="Wrap"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center"
-                               FontSize="16"/>
+                <Border x:Name="WbaChartsHost" Background="#23233D" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <WrapPanel VerticalAlignment="Center" Margin="0,0,0,12">
+                            <TextBlock Text="指标:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox ItemsSource="{Binding WbaMetricOptions}"
+                                      SelectedIndex="{Binding WbaTrendMetricIndex, Mode=TwoWay}"
+                                      Width="200"
+                                      Style="{StaticResource ComboBoxExtend}"/>
+                        </WrapPanel>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemTemplate="{StaticResource TrendGroupChartTemplate}"
+                                          ItemsSource="{Binding WbaTrendGroups}"/>
+                        </ScrollViewer>
+                    </Grid>
                 </Border>
             </TabItem>
         </TabControl>
