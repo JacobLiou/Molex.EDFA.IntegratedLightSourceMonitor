@@ -304,6 +304,14 @@ public class AcquisitionService : IAcquisitionService
                     {
                         WavelengthTableUpdated.SafeInvoke(wlTable, nameof(WavelengthTableUpdated));
                         await EvaluateWmWavelengthAlarmsAsync(wlTable, ct);
+                        try
+                        {
+                            await PersistWmSnapshotAsync(db, wlTable, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to persist WM trend snapshot");
+                        }
                     }
 
                     if (wbaBatch.Count > 0)
@@ -324,6 +332,14 @@ public class AcquisitionService : IAcquisitionService
                 {
                     WavelengthTableUpdated.SafeInvoke(wlTable, nameof(WavelengthTableUpdated));
                     await EvaluateWmWavelengthAlarmsAsync(wlTable, ct);
+                    try
+                    {
+                        await PersistWmSnapshotAsync(db, wlTable, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to persist WM trend snapshot");
+                    }
                 }
 
                 if (wbaBatch.Count > 0)
@@ -408,6 +424,27 @@ public class AcquisitionService : IAcquisitionService
             if (string.IsNullOrWhiteSpace(device.UsbAddress))
                 throw new InvalidOperationException($"UsbAddress must not be empty for device {device.DeviceSN}");
         }
+    }
+
+    private static async Task PersistWmSnapshotAsync(MonitorDbContext db, WavelengthTableSnapshot snapshot,
+        CancellationToken ct)
+    {
+        var list = new List<WmMeasurementRecord>(snapshot.Rows.Count);
+        foreach (var row in snapshot.Rows)
+        {
+            list.Add(new WmMeasurementRecord
+            {
+                Timestamp = snapshot.Timestamp,
+                QueryDeviceId = snapshot.QueryDeviceId ?? "",
+                ChannelIndex = row.ChannelIndex,
+                WavelengthNm = row.WavelengthNm,
+                WmPowerDbm = row.IsValid ? row.WmPowerDbm : null,
+                IsValid = row.IsValid
+            });
+        }
+
+        db.WmMeasurementRecords.AddRange(list);
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task<WavelengthTableSnapshot> BuildWavelengthTableSnapshotAsync(DateTime now, CancellationToken ct)

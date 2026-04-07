@@ -87,6 +87,38 @@ namespace LightSourceMonitor.Migrations
                     b.ToTable("MeasurementRecords");
                 });
 
+            modelBuilder.Entity("LightSourceMonitor.Models.WmMeasurementRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ChannelIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("QueryDeviceId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("WmPowerDbm")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("WavelengthNm")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QueryDeviceId", "ChannelIndex", "Timestamp");
+
+                    b.ToTable("WmMeasurementRecords");
+                });
+
 #pragma warning restore 612, 618
         }
     }

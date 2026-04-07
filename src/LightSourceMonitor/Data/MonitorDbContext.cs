@@ -6,6 +6,7 @@ namespace LightSourceMonitor.Data;
 public class MonitorDbContext : DbContext
 {
     public DbSet<MeasurementRecord> MeasurementRecords => Set<MeasurementRecord>();
+    public DbSet<WmMeasurementRecord> WmMeasurementRecords => Set<WmMeasurementRecord>();
     public DbSet<AlarmEvent> AlarmEvents => Set<AlarmEvent>();
 
     public MonitorDbContext(DbContextOptions<MonitorDbContext> options) : base(options)
@@ -19,6 +20,11 @@ public class MonitorDbContext : DbContext
         {
             entity.HasIndex(e => new { e.ChannelId, e.Timestamp });
             entity.HasIndex(e => e.IsSyncedToTms);
+        });
+
+        modelBuilder.Entity<WmMeasurementRecord>(entity =>
+        {
+            entity.HasIndex(e => new { e.QueryDeviceId, e.ChannelIndex, e.Timestamp });
         });
 
         modelBuilder.Entity<AlarmEvent>(entity =>
