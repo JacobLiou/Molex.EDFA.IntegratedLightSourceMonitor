@@ -469,7 +469,7 @@
                                                    Margin="0,0,0,14" />
                                         <Grid Margin="0,4,0,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="220" />
+                                                <ColumnDefinition Width="380" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
@@ -491,7 +491,7 @@
                                                                 Width="180"
                                                                 HorizontalAlignment="Left"
                                                                 Style="{StaticResource NumericUpDownExtend}"
-                                                                Margin="0,0,0,12" />
+                                                                Margin="10,0,0,12" />
 
                                             <StackPanel Grid.Row="1" Margin="0,0,0,12">
                                                 <TextBlock Text="波长计扫描频率 (每 N 次)" Foreground="#E8E8F0" FontWeight="SemiBold" />
@@ -506,7 +506,7 @@
                                                                 Width="180"
                                                                 HorizontalAlignment="Left"
                                                                 Style="{StaticResource NumericUpDownExtend}"
-                                                                Margin="0,0,0,12" />
+                                                                Margin="10,0,0,12" />
 
                                             <StackPanel Grid.Row="2" Margin="0,0,0,12">
                                                 <TextBlock Text="WBA扫描频率 (每 N 次)" Foreground="#E8E8F0" FontWeight="SemiBold" />
@@ -521,7 +521,7 @@
                                                                 Width="180"
                                                                 HorizontalAlignment="Left"
                                                                 Style="{StaticResource NumericUpDownExtend}"
-                                                                Margin="0,0,0,12" />
+                                                                Margin="10,0,0,12" />
 
                                             <StackPanel Grid.Row="3" Margin="0,0,0,12">
                                                 <TextBlock Text="数据库写入频率 (每 N 次)" Foreground="#E8E8F0" FontWeight="SemiBold" />
@@ -536,7 +536,7 @@
                                                                 Width="180"
                                                                 HorizontalAlignment="Left"
                                                                 Style="{StaticResource NumericUpDownExtend}"
-                                                                Margin="0,0,0,12" />
+                                                                Margin="10,0,0,12" />
                                         </Grid>
                                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                             <Button Content="应用采集参数"
