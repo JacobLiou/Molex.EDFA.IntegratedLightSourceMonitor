@@ -26,15 +26,38 @@
         </Border>
 
         <!-- Chart -->
-        <Border x:Name="ChartContainer" Grid.Row="1" Background="#23233D" CornerRadius="8" Padding="12">
-            <lvc:CartesianChart Series="{Binding Series}"
-                                XAxes="{Binding XAxes}"
-                                YAxes="{Binding YAxes}"
-                                ZoomMode="X"
-                                TooltipPosition="Top"
-                                LegendPosition="Right"
-                                LegendTextSize="10" />
-        </Border>
+        <Grid Grid.Row="1">
+            <Border x:Name="ChartContainer" Background="#23233D" CornerRadius="8" Padding="12">
+                <lvc:CartesianChart Series="{Binding Series}"
+                                    XAxes="{Binding XAxes}"
+                                    YAxes="{Binding YAxes}"
+                                    ZoomMode="X"
+                                    TooltipPosition="Top"
+                                    LegendPosition="Right"
+                                    LegendTextSize="10"/>
+            </Border>
+            <Border Panel.ZIndex="1"
+                    Background="#D8151525"
+                    Visibility="{Binding IsTrendDataLoading, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ProgressBar Width="260" Height="4"
+                                 IsIndeterminate="True"
+                                 Foreground="#448AFF"
+                                 Background="#2D2D4A"
+                                 BorderThickness="0"/>
+                    <TextBlock Text="正在加载趋势数据…"
+                               Foreground="#E8E8F0"
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               Margin="0,14,0,0"/>
+                    <TextBlock Text="数据量大时可能需要数秒"
+                               Foreground="#9898B0"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- Status Bar -->
         <Border Grid.Row="2" Margin="0,8,0,0">

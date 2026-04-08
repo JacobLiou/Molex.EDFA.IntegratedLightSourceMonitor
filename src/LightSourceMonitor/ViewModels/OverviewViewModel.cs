@@ -434,7 +434,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     private void NavigateToAlarms()
     {
         var mainVm = _services.GetRequiredService<MainViewModel>();
-        mainVm.SelectedNavIndex = 2;
+        mainVm.SelectedNavIndex = 3;
     }
 
     public void RefreshKpi()

@@ -17,8 +17,11 @@
         <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
             <views:OverviewPage/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:TrendHostViewModel}">
-            <views:TrendHostPage/>
+        <DataTemplate DataType="{x:Type vm:TrendViewModel}">
+            <views:TrendPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:WmTrendViewModel}">
+            <views:WmTrendPage/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:AlarmViewModel}">
             <views:AlarmPage/>
@@ -138,7 +141,8 @@
                         </Style>
                     </ListBox.ItemContainerStyle>
                     <ListBoxItem Content="总览" Tag="📊"/>
-                    <ListBoxItem Content="趋势" Tag="📈"/>
+                    <ListBoxItem Content="PD趋势" Tag="📈"/>
+                    <ListBoxItem Content="WM趋势" Tag="📡"/>
                     <ListBoxItem Content="告警" Tag="🔔"/>
                     <ListBoxItem Content="设置" Tag="⚙"/>
                 </ListBox>

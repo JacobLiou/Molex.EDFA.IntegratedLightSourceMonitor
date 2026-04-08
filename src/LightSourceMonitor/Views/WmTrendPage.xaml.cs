@@ -64,7 +64,7 @@ public partial class WmTrendPage : UserControl
     }
 
     /// <summary>
-    /// WM 与 PD 叠放在 TrendHost 内用 Visibility 切换时，Skia 图在首次可见时可能未按正确高度计算底部时间轴与图例，强制一轮布局刷新。
+    /// 页面再次进入可视树或 Series 更新时，强制一轮布局刷新，避免 Skia 图高度/轴区计算异常。
     /// </summary>
     private void RequestWmChartRemeasure()
     {
