@@ -43,12 +43,36 @@
 
         <!-- Visibility 必须相对宿主 VM：子页 DataContext 已是 PdTrend/WmTrend，不能在同一元素上绑 IsPdTrendTabActive -->
         <Grid Grid.Row="1">
-            <views:TrendPage DataContext="{Binding PdTrend}"
-                             Margin="0,0,0,0"
-                             Visibility="{Binding DataContext.IsPdTrendTabActive, ElementName=RootHost, Converter={StaticResource BoolToVisibility}}"/>
-            <views:WmTrendPage DataContext="{Binding WmTrend}"
-                               Margin="0,0,0,0"
-                               Visibility="{Binding DataContext.IsWmTrendTabActive, ElementName=RootHost, Converter={StaticResource BoolToVisibility}}"/>
+            <Grid>
+                <views:TrendPage DataContext="{Binding PdTrend}"
+                                 Margin="0,0,0,0"
+                                 Visibility="{Binding DataContext.IsPdTrendTabActive, ElementName=RootHost, Converter={StaticResource BoolToVisibility}}"/>
+                <views:WmTrendPage DataContext="{Binding WmTrend}"
+                                   Margin="0,0,0,0"
+                                   Visibility="{Binding DataContext.IsWmTrendTabActive, ElementName=RootHost, Converter={StaticResource BoolToVisibility}}"/>
+            </Grid>
+
+            <Border Panel.ZIndex="1"
+                    Background="#D8151525"
+                    Visibility="{Binding IsActiveTrendLoading, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ProgressBar Width="260" Height="4"
+                                 IsIndeterminate="True"
+                                 Foreground="#448AFF"
+                                 Background="#2D2D4A"
+                                 BorderThickness="0"/>
+                    <TextBlock Text="正在加载趋势数据…"
+                               Foreground="#E8E8F0"
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               Margin="0,14,0,0"/>
+                    <TextBlock Text="数据量大时可能需要数秒"
+                               Foreground="#9898B0"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

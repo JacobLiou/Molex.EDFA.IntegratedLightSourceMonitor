@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace LightSourceMonitor.ViewModels;
@@ -15,7 +16,14 @@ public partial class TrendHostViewModel : ObservableObject
         PdTrend = pdTrend;
         WmTrend = wmTrend;
         ActiveTrendTab = 0;
+
+        PdTrend.PropertyChanged += OnChildTrendPropertyChanged;
+        WmTrend.PropertyChanged += OnChildTrendPropertyChanged;
     }
+
+    /// <summary>当前选中子页是否正在拉取/绘制趋势数据（用于全页 Loading 遮罩）。</summary>
+    public bool IsActiveTrendLoading =>
+        ActiveTrendTab == 0 ? PdTrend.IsTrendDataLoading : WmTrend.IsTrendDataLoading;
 
     public bool IsPdTrendTabActive => ActiveTrendTab == 0;
     public bool IsWmTrendTabActive => ActiveTrendTab == 1;
@@ -24,5 +32,12 @@ public partial class TrendHostViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsPdTrendTabActive));
         OnPropertyChanged(nameof(IsWmTrendTabActive));
+        OnPropertyChanged(nameof(IsActiveTrendLoading));
+    }
+
+    private void OnChildTrendPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TrendViewModel.IsTrendDataLoading))
+            OnPropertyChanged(nameof(IsActiveTrendLoading));
     }
 }

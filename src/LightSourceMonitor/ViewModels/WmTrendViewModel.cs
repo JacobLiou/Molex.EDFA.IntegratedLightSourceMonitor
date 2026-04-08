@@ -35,6 +35,7 @@ public partial class WmTrendViewModel : ObservableObject
     [ObservableProperty] private string _selectedTimeRange = "最近1小时";
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private int _dataPointCount;
+    [ObservableProperty] private bool _isTrendDataLoading;
 
     public string[] TimeRangeOptions { get; } =
         { "最近1小时", "最近24小时", "最近7天", "最近30天" };
@@ -90,6 +91,7 @@ public partial class WmTrendViewModel : ObservableObject
     {
         if (_isLoading) return;
         _isLoading = true;
+        IsTrendDataLoading = true;
 
         try
         {
@@ -139,6 +141,7 @@ public partial class WmTrendViewModel : ObservableObject
         finally
         {
             _isLoading = false;
+            IsTrendDataLoading = false;
         }
     }
 

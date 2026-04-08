@@ -24,13 +24,17 @@
             </WrapPanel>
         </Border>
 
+        <!-- 图例放右侧：八路 + 底图例时易把时间轴和图例挤出可视区；右侧与 PD 底图例分离，仅影响 WM -->
         <Border x:Name="ChartContainer" Grid.Row="1" Background="#23233D" CornerRadius="8" Padding="12">
-            <lvc:CartesianChart Series="{Binding Series}"
+            <lvc:CartesianChart x:Name="WmCartesianChart"
+                                MinHeight="320"
+                                Series="{Binding Series}"
                                 XAxes="{Binding XAxes}"
                                 YAxes="{Binding YAxes}"
                                 ZoomMode="X"
                                 TooltipPosition="Top"
-                                LegendPosition="Bottom"/>
+                                LegendPosition="Right"
+                                LegendTextSize="10"/>
         </Border>
 
         <Border Grid.Row="2" Margin="0,8,0,0">

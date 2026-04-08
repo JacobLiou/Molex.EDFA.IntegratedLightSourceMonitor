@@ -32,7 +32,8 @@
                                 YAxes="{Binding YAxes}"
                                 ZoomMode="X"
                                 TooltipPosition="Top"
-                                LegendPosition="Bottom"/>
+                                LegendPosition="Right"
+                                LegendTextSize="10" />
         </Border>
 
         <!-- Status Bar -->

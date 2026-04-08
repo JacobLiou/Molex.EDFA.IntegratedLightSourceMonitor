@@ -1,17 +1,82 @@
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using LightSourceMonitor.ViewModels;
 
 namespace LightSourceMonitor.Views;
 
 public partial class WmTrendPage : UserControl
 {
+    private INotifyPropertyChanged? _vmNotify;
+
     public WmTrendPage()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+        IsVisibleChanged += OnIsVisibleChanged;
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        RequestWmChartRemeasure();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        DetachVmPropertyChanged();
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        DetachVmPropertyChanged();
+        if (e.NewValue is INotifyPropertyChanged n)
+        {
+            _vmNotify = n;
+            n.PropertyChanged += OnVmPropertyChanged;
+        }
+    }
+
+    private void DetachVmPropertyChanged()
+    {
+        if (_vmNotify != null)
+        {
+            _vmNotify.PropertyChanged -= OnVmPropertyChanged;
+            _vmNotify = null;
+        }
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WmTrendViewModel.Series))
+            RequestWmChartRemeasure();
+    }
+
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible)
+            RequestWmChartRemeasure();
+    }
+
+    /// <summary>
+    /// WM 与 PD 叠放在 TrendHost 内用 Visibility 切换时，Skia 图在首次可见时可能未按正确高度计算底部时间轴与图例，强制一轮布局刷新。
+    /// </summary>
+    private void RequestWmChartRemeasure()
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            WmCartesianChart.UpdateLayout();
+            InvalidateMeasure();
+            InvalidateArrange();
+            WmCartesianChart.InvalidateMeasure();
+            WmCartesianChart.InvalidateArrange();
+            WmCartesianChart.UpdateLayout();
+        }, DispatcherPriority.Loaded);
     }
 
     private void ExportPng_Click(object sender, RoutedEventArgs e)

@@ -485,9 +485,9 @@
                                             </StackPanel>
                                             <hc:NumericUpDown Grid.Column="1"
                                                                 Value="{Binding SamplingIntervalMs}"
-                                                                Minimum="500"
+                                                                Minimum="2000"
                                                                 Maximum="60000"
-                                                                Increment="100"
+                                                                Increment="1000"
                                                                 Width="180"
                                                                 HorizontalAlignment="Left"
                                                                 Style="{StaticResource NumericUpDownExtend}"
