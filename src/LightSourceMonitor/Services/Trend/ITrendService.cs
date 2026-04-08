@@ -1,6 +1,8 @@
+using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace LightSourceMonitor.Services.Trend;
@@ -9,6 +11,13 @@ public interface ITrendService
 {
     Task<IList<MeasurementRecord>> GetTrendDataAsync(int channelId, DateTime from, DateTime to, int maxPoints = 2000);
     Task<IList<MeasurementRecord>> GetTrendDataAsync(int[] channelIds, DateTime from, DateTime to, int maxPoints = 2000);
+
+    /// <summary>波长计各路波长时间序列（已按路降采样）。</summary>
+    Task<IReadOnlyList<WmTrendChannelSeries>> GetWmWavelengthTrendAsync(DateTime from, DateTime to, int maxPointsPerSeries = 2000);
+
+    /// <summary>时间范围内的 WM 快照原始行（用于 CSV 导出等）。</summary>
+    Task<IReadOnlyList<WavelengthMeterSnapshot>> GetWavelengthMeterSnapshotsAsync(DateTime from, DateTime to);
+
     Task CleanupOldDataAsync(int retentionDays = 30);
 }
 
@@ -30,14 +39,12 @@ public class TrendService : ITrendService
             .Where(r => r.ChannelId == channelId && r.Timestamp >= from && r.Timestamp <= to)
             .OrderBy(r => r.Timestamp);
 
-        var totalCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(query);
+        var totalCount = await query.CountAsync();
 
         if (totalCount <= maxPoints)
-        {
-            return await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(query);
-        }
+            return await query.ToListAsync();
 
-        var allData = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(query);
+        var allData = await query.ToListAsync();
         return LttbDownsample(allData, maxPoints);
     }
 
@@ -49,14 +56,81 @@ public class TrendService : ITrendService
             var channelData = await GetTrendDataAsync(channelId, from, to, maxPoints);
             result.AddRange(channelData);
         }
+
         result.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
         return result;
     }
 
-    /// <summary>
-    /// Largest-Triangle-Three-Buckets downsampling preserves visual shape
-    /// while reducing point count to the target threshold.
-    /// </summary>
+    public async Task<IReadOnlyList<WmTrendChannelSeries>> GetWmWavelengthTrendAsync(DateTime from, DateTime to,
+        int maxPointsPerSeries = 2000)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Data.MonitorDbContext>();
+        var wmSettings = scope.ServiceProvider.GetRequiredService<IOptions<WavelengthServiceSettings>>().Value;
+
+        var rows = await db.WavelengthMeterSnapshots
+            .Where(r => r.Timestamp >= from && r.Timestamp <= to)
+            .OrderBy(r => r.Timestamp)
+            .ToListAsync();
+
+        if (rows.Count == 0)
+            return Array.Empty<WmTrendChannelSeries>();
+
+        var maxCh = 0;
+        foreach (var r in rows)
+        {
+            var wl = WmSnapshotCsvCodec.ParseWavelengthSegments(r.OneTimeValues);
+            maxCh = Math.Max(maxCh, wl.Count);
+        }
+
+        var perChannel = new List<(DateTime, double)>[maxCh];
+        for (var i = 0; i < maxCh; i++)
+            perChannel[i] = new List<(DateTime, double)>();
+
+        foreach (var r in rows)
+        {
+            var wl = WmSnapshotCsvCodec.ParseWavelengthSegments(r.OneTimeValues);
+            for (var i = 0; i < wl.Count && i < maxCh; i++)
+            {
+                if (wl[i] is { } v)
+                    perChannel[i].Add((r.Timestamp, v));
+            }
+        }
+
+        var result = new List<WmTrendChannelSeries>();
+        for (var i = 0; i < maxCh; i++)
+        {
+            var pts = perChannel[i];
+            if (pts.Count == 0)
+                continue;
+
+            var down = LttbDownsampleDy(pts, maxPointsPerSeries);
+            var spec = wmSettings.ResolveChannelSpec(i);
+            var name = spec is { ChannelName: var n } && !string.IsNullOrWhiteSpace(n)
+                ? n.Trim()
+                : $"路{i}";
+
+            result.Add(new WmTrendChannelSeries
+            {
+                ChannelIndex = i,
+                SeriesName = name,
+                Points = down.Select(p => (p.t, p.y)).ToList()
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<WavelengthMeterSnapshot>> GetWavelengthMeterSnapshotsAsync(DateTime from, DateTime to)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Data.MonitorDbContext>();
+        return await db.WavelengthMeterSnapshots
+            .Where(r => r.Timestamp >= from && r.Timestamp <= to)
+            .OrderBy(r => r.Timestamp)
+            .ToListAsync();
+    }
+
     private static List<MeasurementRecord> LttbDownsample(List<MeasurementRecord> data, int threshold)
     {
         if (data.Count <= threshold) return data;
@@ -64,40 +138,99 @@ public class TrendService : ITrendService
         var sampled = new List<MeasurementRecord>(threshold);
         sampled.Add(data[0]);
 
-        double bucketSize = (double)(data.Count - 2) / (threshold - 2);
+        var bucketSize = (double)(data.Count - 2) / (threshold - 2);
 
-        int aIndex = 0;
-        for (int i = 0; i < threshold - 2; i++)
+        var aIndex = 0;
+        for (var i = 0; i < threshold - 2; i++)
         {
-            int bucketStart = (int)Math.Floor((i + 1) * bucketSize) + 1;
-            int bucketEnd = (int)Math.Floor((i + 2) * bucketSize) + 1;
+            var bucketStart = (int)Math.Floor((i + 1) * bucketSize) + 1;
+            var bucketEnd = (int)Math.Floor((i + 2) * bucketSize) + 1;
             if (bucketEnd > data.Count - 1) bucketEnd = data.Count - 1;
 
-            int nextBucketStart = bucketEnd;
-            int nextBucketEnd = (int)Math.Floor((i + 3) * bucketSize) + 1;
+            var nextBucketEnd = (int)Math.Floor((i + 3) * bucketSize) + 1;
             if (nextBucketEnd > data.Count - 1) nextBucketEnd = data.Count - 1;
             if (i == threshold - 3) nextBucketEnd = data.Count - 1;
 
+            var nextBucketStart = bucketEnd;
             double avgX = 0, avgY = 0;
-            int nextCount = nextBucketEnd - nextBucketStart + 1;
-            for (int j = nextBucketStart; j <= nextBucketEnd; j++)
+            var nextCount = nextBucketEnd - nextBucketStart + 1;
+            for (var j = nextBucketStart; j <= nextBucketEnd; j++)
             {
                 avgX += data[j].Timestamp.Ticks;
                 avgY += data[j].Power;
             }
+
             avgX /= nextCount;
             avgY /= nextCount;
 
             double maxArea = -1;
-            int maxIndex = bucketStart;
-            double pointAx = data[aIndex].Timestamp.Ticks;
-            double pointAy = data[aIndex].Power;
+            var maxIndex = bucketStart;
+            var pointAx = data[aIndex].Timestamp.Ticks;
+            var pointAy = data[aIndex].Power;
 
-            for (int j = bucketStart; j < bucketEnd; j++)
+            for (var j = bucketStart; j < bucketEnd; j++)
             {
-                double area = Math.Abs(
+                var area = Math.Abs(
                     (pointAx - avgX) * (data[j].Power - pointAy) -
                     (pointAx - data[j].Timestamp.Ticks) * (avgY - pointAy));
+                if (area > maxArea)
+                {
+                    maxArea = area;
+                    maxIndex = j;
+                }
+            }
+
+            sampled.Add(data[maxIndex]);
+            aIndex = maxIndex;
+        }
+
+        sampled.Add(data[^1]);
+        return sampled;
+    }
+
+    private static List<(DateTime t, double y)> LttbDownsampleDy(IReadOnlyList<(DateTime t, double y)> data, int threshold)
+    {
+        if (data.Count <= threshold)
+            return data.ToList();
+
+        var sampled = new List<(DateTime t, double y)>(threshold);
+        sampled.Add(data[0]);
+
+        var bucketSize = (double)(data.Count - 2) / (threshold - 2);
+
+        var aIndex = 0;
+        for (var i = 0; i < threshold - 2; i++)
+        {
+            var bucketStart = (int)Math.Floor((i + 1) * bucketSize) + 1;
+            var bucketEnd = (int)Math.Floor((i + 2) * bucketSize) + 1;
+            if (bucketEnd > data.Count - 1) bucketEnd = data.Count - 1;
+
+            var nextBucketEnd = (int)Math.Floor((i + 3) * bucketSize) + 1;
+            if (nextBucketEnd > data.Count - 1) nextBucketEnd = data.Count - 1;
+            if (i == threshold - 3) nextBucketEnd = data.Count - 1;
+
+            var nextBucketStart = bucketEnd;
+            double avgX = 0, avgY = 0;
+            var nextCount = nextBucketEnd - nextBucketStart + 1;
+            for (var j = nextBucketStart; j <= nextBucketEnd; j++)
+            {
+                avgX += data[j].t.Ticks;
+                avgY += data[j].y;
+            }
+
+            avgX /= nextCount;
+            avgY /= nextCount;
+
+            double maxArea = -1;
+            var maxIndex = bucketStart;
+            var pointAx = data[aIndex].t.Ticks;
+            var pointAy = data[aIndex].y;
+
+            for (var j = bucketStart; j < bucketEnd; j++)
+            {
+                var area = Math.Abs(
+                    (pointAx - avgX) * (data[j].y - pointAy) -
+                    (pointAx - data[j].t.Ticks) * (avgY - pointAy));
                 if (area > maxArea)
                 {
                     maxArea = area;
@@ -119,15 +252,16 @@ public class TrendService : ITrendService
         var db = scope.ServiceProvider.GetRequiredService<Data.MonitorDbContext>();
         var cutoff = DateTime.Now.AddDays(-retentionDays);
 
-        var batchSize = 5000;
-        int totalDeleted = 0;
+        const int batchSize = 5000;
+        var totalDeleted = 0;
+        var totalWm = 0;
 
         while (true)
         {
-            var batch = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
-                .ToListAsync(db.MeasurementRecords
-                    .Where(r => r.Timestamp < cutoff)
-                    .Take(batchSize));
+            var batch = await db.MeasurementRecords
+                .Where(r => r.Timestamp < cutoff)
+                .Take(batchSize)
+                .ToListAsync();
 
             if (batch.Count == 0) break;
 
@@ -136,7 +270,22 @@ public class TrendService : ITrendService
             totalDeleted += batch.Count;
         }
 
-        if (totalDeleted > 0)
-            Log.Information("Data retention: deleted {Count} old MeasurementRecords", totalDeleted);
+        while (true)
+        {
+            var wmBatch = await db.WavelengthMeterSnapshots
+                .Where(r => r.Timestamp < cutoff)
+                .Take(batchSize)
+                .ToListAsync();
+
+            if (wmBatch.Count == 0) break;
+
+            db.WavelengthMeterSnapshots.RemoveRange(wmBatch);
+            await db.SaveChangesAsync();
+            totalWm += wmBatch.Count;
+        }
+
+        if (totalDeleted > 0 || totalWm > 0)
+            Log.Information("Data retention: deleted {Count} MeasurementRecords, {Wm} WavelengthMeterSnapshots", totalDeleted,
+                totalWm);
     }
 }

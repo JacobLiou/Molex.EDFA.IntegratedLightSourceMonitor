@@ -311,6 +311,22 @@ public class AcquisitionService : IAcquisitionService
 
                     _sampleCount++;
 
+                    if (_sampleCount == 1 || _sampleCount % dbWriteEveryN == 0)
+                    {
+                        try
+                        {
+                            if (wlTable != null)
+                            {
+                                db.WavelengthMeterSnapshots.Add(WmSnapshotCsvCodec.ToEntity(wlTable));
+                                await db.SaveChangesAsync(ct);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to write wavelength meter snapshot to DB");
+                        }
+                    }
+
                     // 采集周期完成事件，即使没有PD数据也要触发
                     AcquisitionCycleCompleted?.Invoke(now);
 
@@ -335,12 +351,16 @@ public class AcquisitionService : IAcquisitionService
                 {
                     try
                     {
-                        db.MeasurementRecords.AddRange(batch.Values);
-                        await db.SaveChangesAsync(ct);
+                        if (batch.Count > 0)
+                            db.MeasurementRecords.AddRange(batch.Values);
+                        if (wlTable != null)
+                            db.WavelengthMeterSnapshots.Add(WmSnapshotCsvCodec.ToEntity(wlTable));
+                        if (batch.Count > 0 || wlTable != null)
+                            await db.SaveChangesAsync(ct);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to write measurement batch to DB");
+                        _logger.LogError(ex, "Failed to write acquisition batch to DB");
                     }
                 }
 

@@ -152,6 +152,8 @@ public partial class App : Application
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<OverviewViewModel>();
                 services.AddTransient<TrendViewModel>();
+                services.AddTransient<WmTrendViewModel>();
+                services.AddTransient<TrendHostViewModel>();
                 services.AddTransient<AlarmViewModel>();
                 services.AddTransient<SettingsViewModel>();
 

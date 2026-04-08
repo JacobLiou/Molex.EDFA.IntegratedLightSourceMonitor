@@ -1,0 +1,45 @@
+<UserControl x:Class="LightSourceMonitor.Views.WmTrendPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+            <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="时间范围:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding TimeRangeOptions}" SelectedItem="{Binding SelectedTimeRange}"
+                          Width="140" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}"/>
+
+                <Button Content="🔄 刷新" Command="{Binding LoadDataCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource ButtonPrimary}" Padding="12,4"/>
+                <Button Content="导出 CSV" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource ButtonDefault}" Padding="12,4"/>
+                <Button Content="导出 PNG" Click="ExportPng_Click"
+                        Style="{StaticResource ButtonDefault}" Padding="12,4"/>
+            </WrapPanel>
+        </Border>
+
+        <Border x:Name="ChartContainer" Grid.Row="1" Background="#23233D" CornerRadius="8" Padding="12">
+            <lvc:CartesianChart Series="{Binding Series}"
+                                XAxes="{Binding XAxes}"
+                                YAxes="{Binding YAxes}"
+                                ZoomMode="X"
+                                TooltipPosition="Top"
+                                LegendPosition="Bottom"/>
+        </Border>
+
+        <Border Grid.Row="2" Margin="0,8,0,0">
+            <DockPanel>
+                <TextBlock Text="{Binding StatusText}" Foreground="#9898B0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding DataPointCount, StringFormat='数据点: {0}'}"
+                           Foreground="#55556A" HorizontalAlignment="Right" VerticalAlignment="Center"
+                           FontFamily="Consolas"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

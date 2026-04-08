@@ -17,8 +17,8 @@
         <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
             <views:OverviewPage/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:TrendViewModel}">
-            <views:TrendPage/>
+        <DataTemplate DataType="{x:Type vm:TrendHostViewModel}">
+            <views:TrendHostPage/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:AlarmViewModel}">
             <views:AlarmPage/>

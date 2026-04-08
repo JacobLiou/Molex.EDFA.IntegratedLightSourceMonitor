@@ -87,6 +87,37 @@ namespace LightSourceMonitor.Migrations
                     b.ToTable("MeasurementRecords");
                 });
 
+            modelBuilder.Entity("LightSourceMonitor.Models.WavelengthMeterSnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OneTimeValues")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PowerValues")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("QueryDeviceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("QueryDeviceId", "Timestamp");
+
+                    b.ToTable("WavelengthMeterSnapshots");
+                });
+
 #pragma warning restore 612, 618
         }
     }

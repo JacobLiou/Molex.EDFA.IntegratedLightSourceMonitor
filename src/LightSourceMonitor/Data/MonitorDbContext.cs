@@ -6,6 +6,7 @@ namespace LightSourceMonitor.Data;
 public class MonitorDbContext : DbContext
 {
     public DbSet<MeasurementRecord> MeasurementRecords => Set<MeasurementRecord>();
+    public DbSet<WavelengthMeterSnapshot> WavelengthMeterSnapshots => Set<WavelengthMeterSnapshot>();
     public DbSet<AlarmEvent> AlarmEvents => Set<AlarmEvent>();
 
     public MonitorDbContext(DbContextOptions<MonitorDbContext> options) : base(options)
@@ -24,6 +25,12 @@ public class MonitorDbContext : DbContext
         modelBuilder.Entity<AlarmEvent>(entity =>
         {
             entity.HasIndex(e => new { e.ChannelId, e.OccurredAt });
+        });
+
+        modelBuilder.Entity<WavelengthMeterSnapshot>(entity =>
+        {
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.QueryDeviceId, e.Timestamp });
         });
     }
 }
