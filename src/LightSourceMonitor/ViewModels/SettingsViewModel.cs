@@ -70,7 +70,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _pdHasDeviceTabs;
     [ObservableProperty] private bool _pdShowEmptyChannelHint;
     [ObservableProperty] private string _wbaDevicesSummary = "";
-    [ObservableProperty] private string _selectedLanguage = LanguageService.ZhCn;
+    [ObservableProperty] private string _selectedLanguage = LanguageService.EnUs;
 
     private int _consecutiveEmailFailureCount;
 
@@ -183,8 +183,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var ui = await _runtimeJsonConfig.LoadUiAsync();
-            SelectedLanguage = ui.Language;
+            SelectedLanguage = _language.CurrentLanguage;
 
             var email = await _runtimeJsonConfig.LoadEmailAsync();
             EmailApiUrl = email.ApiUrl;
@@ -246,7 +245,7 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             _language.ApplyLanguage(SelectedLanguage);
-            var ui = new UiConfig { Language = SelectedLanguage };
+            var ui = new UiConfig { Language = SelectedLanguage, LanguageSetByUser = true };
             await _runtimeJsonConfig.SaveUiAsync(ui);
             StatusMessage = _language.GetString("Settings_Status_Saved");
         }

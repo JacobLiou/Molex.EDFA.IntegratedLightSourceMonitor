@@ -117,8 +117,43 @@ public sealed class RuntimeJsonConfigService : IRuntimeJsonConfigService
     public Task SaveTmsAsync(TmsConfig config, CancellationToken cancellationToken = default) =>
         WriteAsync(TmsFileName, config, cancellationToken);
 
-    public Task<UiConfig> LoadUiAsync(CancellationToken cancellationToken = default) =>
-        ReadAsync(UiFileName, () => new UiConfig(), cancellationToken);
+    public async Task<UiConfig> LoadUiAsync(CancellationToken cancellationToken = default)
+    {
+        await _ioLock.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureConfigDirectoryAsync(cancellationToken);
+            var path = PathFor(UiFileName);
+            if (!File.Exists(path))
+            {
+                _logger.LogInformation("Config file missing, using defaults: {Path}", path);
+                return new UiConfig();
+            }
+
+            string json;
+            await using (var stream = File.OpenRead(path))
+            using (var reader = new StreamReader(stream))
+                json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+            var model = JsonSerializer.Deserialize<UiConfig>(json, JsonOptions) ?? new UiConfig();
+            using (var doc = JsonDocument.Parse(json))
+            {
+                if (!doc.RootElement.TryGetProperty("languageSetByUser", out _))
+                    model.LanguageSetByUser = true;
+            }
+
+            return model;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read config {File}, using defaults", UiFileName);
+            return new UiConfig();
+        }
+        finally
+        {
+            _ioLock.Release();
+        }
+    }
 
     public Task SaveUiAsync(UiConfig config, CancellationToken cancellationToken = default) =>
         WriteAsync(UiFileName, config, cancellationToken);

@@ -178,7 +178,9 @@ public partial class App : Application
         var language = _host.Services.GetRequiredService<ILanguageService>();
         var runtimeCfg = _host.Services.GetRequiredService<IRuntimeJsonConfigService>();
         var uiConfig = await runtimeCfg.LoadUiAsync();
-        language.ApplyLanguage(uiConfig.Language);
+        var startupLang = LanguageService.ResolveStartupLanguage(uiConfig);
+        Log.Information("UI language: {Lang} (userSaved={UserSaved})", startupLang, uiConfig.LanguageSetByUser);
+        language.ApplyLanguage(startupLang);
         _languageService = language;
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
