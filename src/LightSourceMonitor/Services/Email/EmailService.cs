@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Json;
 using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Config;
+using LightSourceMonitor.Services.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace LightSourceMonitor.Services.Email;
@@ -11,15 +13,18 @@ public class EmailService : IEmailService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<EmailService> _logger;
     private readonly IRuntimeJsonConfigService _runtimeJsonConfig;
+    private readonly ILanguageService _language;
 
     public EmailService(
         IHttpClientFactory httpClientFactory,
         ILogger<EmailService> logger,
-        IRuntimeJsonConfigService runtimeJsonConfig)
+        IRuntimeJsonConfigService runtimeJsonConfig,
+        ILanguageService language)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _runtimeJsonConfig = runtimeJsonConfig;
+        _language = language;
     }
 
     public async Task SendAlarmEmailAsync(
@@ -41,34 +46,41 @@ public class EmailService : IEmailService
         if (alarm.Level < config.MinAlarmLevel)
             return;
 
-        var levelText = alarm.Level == AlarmLevel.Critical ? "严重告警" : "警告";
-        var deviceSnText = string.IsNullOrWhiteSpace(deviceSn) ? "未知设备" : deviceSn.Trim();
-        var channelText = string.IsNullOrWhiteSpace(channelName) ? "未知通道" : channelName.Trim();
-        var subject = $"[{levelText}] 集成光源监控 - {alarm.AlarmType}";
+        var levelText = alarm.Level == AlarmLevel.Critical
+            ? _language.GetString("Email_LevelCritical")
+            : _language.GetString("Email_LevelWarning");
+        var deviceSnText = string.IsNullOrWhiteSpace(deviceSn)
+            ? _language.GetString("Email_UnknownDevice")
+            : deviceSn.Trim();
+        var channelText = string.IsNullOrWhiteSpace(channelName)
+            ? _language.GetString("Email_UnknownChannel")
+            : channelName.Trim();
+        var subject = string.Format(_language.GetString("Email_SubjectFmt"), levelText, alarm.AlarmType);
         var bodyLines = new[]
         {
-            $"时间: {alarm.OccurredAt:yyyy-MM-dd HH:mm:ss}",
-            $"等级: {levelText}",
-            $"告警类型: {alarm.AlarmType}",
-            $"设备SN: {deviceSnText}",
-            $"通道名称: {channelText}",
-            $"统一告警阈值: {(alarmThreshold ?? 0.15):F3}",
-            $"测量值: {alarm.MeasuredValue:F3}",
-            $"Spec值: {alarm.SpecValue:F3}",
-            $"Delta值: {alarm.Delta:F3}"
+            string.Format(_language.GetString("Email_Line_Time"),
+                alarm.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)),
+            string.Format(_language.GetString("Email_Line_Level"), levelText),
+            string.Format(_language.GetString("Email_Line_AlarmType"), alarm.AlarmType),
+            string.Format(_language.GetString("Email_Line_DevSn"), deviceSnText),
+            string.Format(_language.GetString("Email_Line_Channel"), channelText),
+            string.Format(_language.GetString("Email_Line_Threshold"), (alarmThreshold ?? 0.15).ToString("F3", CultureInfo.InvariantCulture)),
+            string.Format(_language.GetString("Email_Line_Measured"), alarm.MeasuredValue.ToString("F3", CultureInfo.InvariantCulture)),
+            string.Format(_language.GetString("Email_Line_Spec"), alarm.SpecValue.ToString("F3", CultureInfo.InvariantCulture)),
+            string.Format(_language.GetString("Email_Line_Delta"), alarm.Delta.ToString("F3", CultureInfo.InvariantCulture))
         };
         var bodyLineList = bodyLines.ToList();
         if (specMin.HasValue && specMax.HasValue)
         {
-            bodyLineList.Add($"下限: {specMin.Value:F3}");
-            bodyLineList.Add($"上限: {specMax.Value:F3}");
+            bodyLineList.Add(string.Format(_language.GetString("Email_Line_Min"), specMin.Value.ToString("F3", CultureInfo.InvariantCulture)));
+            bodyLineList.Add(string.Format(_language.GetString("Email_Line_Max"), specMax.Value.ToString("F3", CultureInfo.InvariantCulture)));
         }
 
         var body = string.Join("<br/>", bodyLineList);
 
         if (trendScreenshot != null)
         {
-            body += "<br/>趋势截图已生成，但当前邮件 API 版本不支持附件。";
+            body += "<br/>" + _language.GetString("Email_ScreenshotNote");
         }
 
         var payload = new
@@ -83,7 +95,9 @@ public class EmailService : IEmailService
         var responseBody = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"邮件 API 调用失败: {(int)response.StatusCode} {response.ReasonPhrase} {responseBody}".Trim());
+            throw new InvalidOperationException(
+                string.Format(_language.GetString("Email_ApiFail"),
+                    $"{(int)response.StatusCode} {response.ReasonPhrase} {responseBody}".Trim()));
         }
 
         _logger.LogInformation("Alarm email sent by HTTP API for channel {ChannelName} ({ChannelId})", channelText, alarm.ChannelId);
@@ -101,7 +115,7 @@ public class EmailService : IEmailService
             Delta = 0.345,
             ChannelId = 0
         };
-        await SendAlarmEmailAsync(testAlarm, "测试通道", "TEST-SN-001", 0.15, -12.200, -11.800);
+        await SendAlarmEmailAsync(testAlarm, "Test channel", "TEST-SN-001", 0.15, -12.200, -11.800);
     }
 
     private async Task<EmailConfig?> GetEmailConfigAsync()

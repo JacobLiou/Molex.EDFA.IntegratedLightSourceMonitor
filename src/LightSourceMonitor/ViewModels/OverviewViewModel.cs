@@ -6,6 +6,7 @@ using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Alarm;
 using LightSourceMonitor.Services.Channels;
+using LightSourceMonitor.Services.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -91,6 +92,7 @@ public partial class DeviceGroupViewModel : ObservableObject
     [ObservableProperty] private string _deviceName = "";
     [ObservableProperty] private string _deviceSn = "";
     [ObservableProperty] private bool _isOnline;
+    [ObservableProperty] private string _channelBadgeText = "";
     public ObservableCollection<ChannelCardViewModel> Channels { get; } = new();
 }
 
@@ -120,19 +122,23 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
     private readonly Dictionary<string, WbaDeviceGroupViewModel> _wbaDeviceMap = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _kpiRefreshTimer;
     private bool _kpiRefreshPending;
+    private readonly ILanguageService _language;
 
     [ObservableProperty] private int _totalChannels;
     [ObservableProperty] private int _normalCount;
     [ObservableProperty] private int _warningCount;
     [ObservableProperty] private int _offlineCount;
     [ObservableProperty] private string _wavelengthTableSubtitle = "—";
+    [ObservableProperty] private string _pdDeviceCountText = "";
+    [ObservableProperty] private string _wmRoutesText = "";
+    [ObservableProperty] private string _wbaDeviceCountText = "";
 
     public ObservableCollection<DeviceGroupViewModel> DeviceGroups { get; } = new();
     public ObservableCollection<WavelengthRowViewModel> WavelengthRows { get; } = new();
     public ObservableCollection<WbaDeviceGroupViewModel> WbaDeviceGroups { get; } = new();
     public ObservableCollection<AlarmItemViewModel> RecentAlarms { get; } = new();
 
-    public OverviewViewModel(IServiceProvider services, IChannelCatalog channelCatalog, IAcquisitionService acquisitionService, IAlarmService alarmService, IOptions<DriverSettings> driverOptions, IOptions<WavelengthServiceSettings> wmServiceOptions)
+    public OverviewViewModel(IServiceProvider services, IChannelCatalog channelCatalog, IAcquisitionService acquisitionService, IAlarmService alarmService, IOptions<DriverSettings> driverOptions, IOptions<WavelengthServiceSettings> wmServiceOptions, ILanguageService language)
     {
         _services = services;
         _channelCatalog = channelCatalog;
@@ -140,6 +146,9 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         _alarmService = alarmService;
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
+        _language = language;
+        _language.LanguageChanged += (_, _) =>
+            AsyncHelper.SafeDispatcherInvoke(UpdateLocalizedChrome);
 
         _acquisitionService.DataAcquired += OnDataAcquired;
         _acquisitionService.WavelengthTableUpdated += OnWavelengthTableUpdated;
@@ -197,6 +206,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                     _channelMap[ch.Id] = (card, ch.AlarmDelta);
                 }
 
+                group.ChannelBadgeText = string.Format(_language.GetString("Overview_ChannelCount"), group.Channels.Count);
                 DeviceGroups.Add(group);
                 _deviceMap[group.DeviceSn] = group;
             }
@@ -226,8 +236,18 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 _wbaDeviceMap[wba.DeviceSN] = wbaGroup;
             }
 
+            UpdateLocalizedChrome();
             RequestKpiRefresh();
         });
+    }
+
+    private void UpdateLocalizedChrome()
+    {
+        PdDeviceCountText = string.Format(_language.GetString("Overview_DeviceCount"), DeviceGroups.Count);
+        WmRoutesText = string.Format(_language.GetString("Overview_WmRoutes"), WavelengthRows.Count);
+        WbaDeviceCountText = string.Format(_language.GetString("Overview_DeviceCount"), WbaDeviceGroups.Count);
+        foreach (var g in DeviceGroups)
+            g.ChannelBadgeText = string.Format(_language.GetString("Overview_ChannelCount"), g.Channels.Count);
     }
 
     private void OnPdConnectionChanged(bool connected)
@@ -303,6 +323,8 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 ApplyWavelengthRowAlarmVisual(rowVm, r);
                 WavelengthRows.Add(rowVm);
             }
+
+            UpdateLocalizedChrome();
         });
     }
 
@@ -311,7 +333,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         if (!r.IsValid)
         {
             vm.WavelengthForeground = "#616161";
-            vm.WavelengthToolTip = "无有效读数";
+            vm.WavelengthToolTip = _language.GetString("Overview_WmTip_NoRead");
             return;
         }
 
@@ -320,10 +342,10 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         {
             vm.WavelengthForeground = "#E8E8F0";
             vm.WavelengthToolTip = spec == null
-                ? "未配置该路 WavelengthService.ChannelSpecs"
+                ? _language.GetString("Overview_WmTip_NoSpec")
                 : !spec.IsEnabled
-                    ? "该路 Spec 已禁用"
-                    : "该路未设置有效标称波长 (SpecWavelengthNm)";
+                    ? _language.GetString("Overview_WmTip_SpecDisabled")
+                    : _language.GetString("Overview_WmTip_NoNominal");
             return;
         }
 
@@ -331,14 +353,17 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
         if (deltaNm <= 0)
         {
             vm.WavelengthForeground = "#E8E8F0";
-            vm.WavelengthToolTip = $"标称 {spec.SpecWavelengthNm:F3} nm（容差未启用）";
+            vm.WavelengthToolTip = string.Format(_language.GetString("Overview_WmTip_NomTolOff"), spec.SpecWavelengthNm);
             return;
         }
 
         var dev = Math.Abs(r.WavelengthNm - spec.SpecWavelengthNm);
         vm.WavelengthForeground = dev > deltaNm ? "#FF5252" : "#E8E8F0";
-        vm.WavelengthToolTip =
-            $"标称 {spec.SpecWavelengthNm:F3} nm\n偏差 {dev:F3} nm（相对本路标称）\n容差 ±{deltaNm:F3} nm\n{(dev > deltaNm ? "已超限" : "在容差内")}";
+        var inOut = dev > deltaNm
+            ? _language.GetString("Overview_WmTip_Out")
+            : _language.GetString("Overview_WmTip_In");
+        vm.WavelengthToolTip = string.Format(_language.GetString("Overview_WmTip_DevDetail"),
+            spec.SpecWavelengthNm, dev, deltaNm, inOut);
     }
 
     private void OnWbaTelemetryAcquired(IReadOnlyDictionary<string, WbaTelemetrySnapshot> snapshots)
@@ -384,7 +409,7 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 var wmSpec = _wmServiceSettings.ResolveChannelSpec(wmIdx);
                 channelName = wmSpec is { ChannelName: var n } && !string.IsNullOrWhiteSpace(n)
                     ? n.Trim()
-                    : $"路{wmIdx}";
+                    : string.Format(_language.GetString("Overview_WmChFmt"), wmIdx);
             }
             else if (_channelMap.TryGetValue(alarm.ChannelId, out var entry))
             {
@@ -403,7 +428,9 @@ public partial class OverviewViewModel : ObservableObject, IDisposable
                 DeviceSn = string.IsNullOrWhiteSpace(deviceSn) ? "—" : deviceSn,
                 ChannelName = channelName,
                 Message = $"{alarm.AlarmType}: {alarm.MeasuredValue:F3} (spec {alarm.SpecValue:F3}, Δ{alarm.Delta:F3})",
-                Level = alarm.Level == AlarmLevel.Critical ? "严重" : "警告",
+                Level = alarm.Level == AlarmLevel.Critical
+                    ? _language.GetString("Alarm_Level_Critical")
+                    : _language.GetString("Alarm_Level_Warning"),
                 LevelColor = alarm.Level == AlarmLevel.Critical ? "#FF1744" : "#FFAB00"
             };
 

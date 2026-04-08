@@ -1,6 +1,7 @@
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using LightSourceMonitor.Models;
+using LightSourceMonitor.Services.Localization;
 using Microsoft.Extensions.Options;
 using Serilog;
 
@@ -9,6 +10,7 @@ namespace LightSourceMonitor.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly IServiceProvider _services;
+    private readonly ILanguageService _language;
     private readonly DispatcherTimer _uptimeTimer;
     private DateTime _startTime;
     private readonly Dictionary<int, object?> _pageCache = new();
@@ -16,16 +18,21 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private object? _currentPage;
     [ObservableProperty] private int _selectedNavIndex;
     [ObservableProperty] private string _uptimeText = "00:00:00";
-    [ObservableProperty] private string _globalStatus = "正常";
+    [ObservableProperty] private GlobalStatusKind _globalStatusKind = GlobalStatusKind.Normal;
+    [ObservableProperty] private string _globalStatusText = "";
     [ObservableProperty] private string _globalStatusColor = "#00E676";
     [ObservableProperty] private string _lastAcquisitionTime = "--";
     [ObservableProperty] private bool _isSimulationMode;
 
-    public MainViewModel(IServiceProvider services, IOptions<DriverSettings> driverOptions)
+    public MainViewModel(IServiceProvider services, IOptions<DriverSettings> driverOptions, ILanguageService language)
     {
         _services = services;
+        _language = language;
         _startTime = DateTime.Now;
         IsSimulationMode = string.Equals(driverOptions.Value.Mode, "Simulated", StringComparison.OrdinalIgnoreCase);
+
+        RefreshGlobalStatusText();
+        _language.LanguageChanged += (_, _) => RefreshGlobalStatusText();
 
         _uptimeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _uptimeTimer.Tick += (_, _) =>
@@ -41,6 +48,18 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedNavIndexChanged(int value)
     {
         NavigateTo(value);
+    }
+
+    partial void OnGlobalStatusKindChanged(GlobalStatusKind value)
+    {
+        RefreshGlobalStatusText();
+    }
+
+    private void RefreshGlobalStatusText()
+    {
+        GlobalStatusText = GlobalStatusKind == GlobalStatusKind.Alarm
+            ? _language.GetString("Status_Alarm")
+            : _language.GetString("Status_Normal");
     }
 
     public void NavigateTo(int index)
@@ -69,9 +88,9 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public void UpdateGlobalStatus(string status, string color)
+    public void UpdateGlobalStatus(GlobalStatusKind kind, string color)
     {
-        GlobalStatus = status;
+        GlobalStatusKind = kind;
         GlobalStatusColor = color;
     }
 

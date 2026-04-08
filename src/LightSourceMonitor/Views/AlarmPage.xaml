@@ -8,36 +8,43 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Filter Bar -->
         <Border Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
             <WrapPanel VerticalAlignment="Center">
-                <TextBlock Text="筛选:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox ItemsSource="{Binding LevelOptions}" SelectedItem="{Binding SelectedLevel}"
-                          Width="100" Margin="0,0,12,0" Style="{StaticResource ComboBoxExtend}"/>
-                <ComboBox ItemsSource="{Binding TimeRangeOptions}" SelectedItem="{Binding SelectedTimeRange}"
-                          Width="140" Margin="0,0,12,0" Style="{StaticResource ComboBoxExtend}"/>
+                <TextBlock Text="{DynamicResource Alarm_Filter}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding LevelFilterKeys}" SelectedItem="{Binding SelectedLevel}"
+                          Width="120" Margin="0,0,12,0" Style="{StaticResource ComboBoxExtend}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ResourceKeyConverter}}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <ComboBox ItemsSource="{Binding AlarmTimeRangeKeys}" SelectedItem="{Binding SelectedTimeRange}"
+                          Width="160" Margin="0,0,12,0" Style="{StaticResource ComboBoxExtend}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ResourceKeyConverter}}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
                 <hc:SearchBar Width="200" SearchStarted="SearchBar_OnSearchStarted"
-                              hc:InfoElement.Placeholder="搜索通道..."
+                              hc:InfoElement.Placeholder="{DynamicResource Alarm_SearchPlaceholder}"
                               Style="{StaticResource SearchBarExtend}" Margin="0,0,12,0"/>
                 <Button Command="{Binding RefreshCommand}" Margin="0,0,12,0" Padding="8,4"
                         Style="{StaticResource ButtonPrimary}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🔄" Margin="0,0,4,0"/>
-                        <TextBlock Text="刷新"/>
-                    </StackPanel>
+                    <TextBlock Text="{DynamicResource Btn_Refresh}"/>
                 </Button>
-                <TextBlock Text="{Binding TotalAlarmCount, StringFormat='共 {0} 条'}" Foreground="#9898B0"
+                <TextBlock Text="{Binding AlarmTotalSummary}" Foreground="#9898B0"
                            VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <ToggleButton IsChecked="{Binding IsMuted}" Margin="0,0,0,0" Padding="8,4">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🔇" Margin="0,0,4,0"/>
-                        <TextBlock Text="静音" Foreground="#E8E8F0"/>
+                        <TextBlock Text="{DynamicResource Alarm_Mute}" Foreground="#E8E8F0"/>
                     </StackPanel>
                 </ToggleButton>
             </WrapPanel>
         </Border>
 
-        <!-- Alarm DataGrid -->
         <DataGrid Grid.Row="1" ItemsSource="{Binding Alarms}" AutoGenerateColumns="False"
                   IsReadOnly="True" Background="#23233D" Foreground="#E8E8F0"
                   BorderThickness="0" GridLinesVisibility="Horizontal"
@@ -73,7 +80,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="时间" Binding="{Binding OccurredAt, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Width="150">
+                <DataGridTextColumn Header="{DynamicResource Alarm_Col_Time}" Binding="{Binding OccurredAt, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Width="250">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="FontFamily" Value="Consolas"/>
@@ -81,9 +88,9 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="级别" Binding="{Binding Level}" Width="60"/>
-                <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="220"/>
-                <DataGridTextColumn Header="测量值" Binding="{Binding MeasuredValue, StringFormat='{}{0:F3}'}" Width="100">
+                <DataGridTextColumn Header="{DynamicResource Alarm_Col_Level}" Binding="{Binding Level}" Width="160"/>
+                <DataGridTextColumn Header="{DynamicResource Alarm_Col_Channel}" Binding="{Binding ChannelName}" Width="220"/>
+                <DataGridTextColumn Header="{DynamicResource Alarm_Col_Measured}" Binding="{Binding MeasuredValue, StringFormat='{}{0:F3}'}" Width="100">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="FontFamily" Value="Consolas"/>
@@ -91,7 +98,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="Spec值" Binding="{Binding SpecValue, StringFormat='{}{0:F3}'}" Width="100">
+                <DataGridTextColumn Header="{DynamicResource Alarm_Col_Spec}" Binding="{Binding SpecValue, StringFormat='{}{0:F3}'}" Width="100">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="FontFamily" Value="Consolas"/>
@@ -99,7 +106,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="偏差Δ" Binding="{Binding Delta, StringFormat='{}{0:F3}'}" Width="80">
+                <DataGridTextColumn Header="{DynamicResource Alarm_Col_Delta}" Binding="{Binding Delta, StringFormat='{}{0:F3}'}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="FontFamily" Value="Consolas"/>
@@ -107,7 +114,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTemplateColumn Header="邮件" Width="50">
+                <DataGridTemplateColumn Header="{DynamicResource Alarm_Col_Email}" Width="80">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock HorizontalAlignment="Center">

@@ -8,6 +8,7 @@ using LightSourceMonitor.Services.Acquisition;
 using LightSourceMonitor.Services.Channels;
 using LightSourceMonitor.Services.Config;
 using LightSourceMonitor.Services.Email;
+using LightSourceMonitor.Services.Localization;
 using LightSourceMonitor.Services.Tms;
 using HandyControl.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly DriverSettings _driverSettings;
     private readonly WavelengthServiceSettings _wmServiceSettings;
     private readonly IRuntimeJsonConfigService _runtimeJsonConfig;
+    private readonly ILanguageService _language;
     private readonly ILogger<SettingsViewModel> _logger;
 
     [ObservableProperty] private string _emailApiUrl = "";
@@ -64,13 +66,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _emailTestStatusColor = "#9898B0";
     [ObservableProperty] private string _emailTestStatusText = "";
 
-    /// <summary>PD 通道配置区顶部摘要文案。</summary>
     [ObservableProperty] private string _pdChannelsSummary = "";
-
-    /// <summary>是否有至少一台 PD 设备（用于显示 Tab 或空状态）。</summary>
     [ObservableProperty] private bool _pdHasDeviceTabs;
-
     [ObservableProperty] private bool _pdShowEmptyChannelHint;
+    [ObservableProperty] private string _wbaDevicesSummary = "";
+    [ObservableProperty] private string _selectedLanguage = LanguageService.ZhCn;
 
     private int _consecutiveEmailFailureCount;
 
@@ -85,6 +85,7 @@ public partial class SettingsViewModel : ObservableObject
                              IOptions<DriverSettings> driverOptions,
                              IOptions<WavelengthServiceSettings> wmServiceOptions,
                              IRuntimeJsonConfigService runtimeJsonConfig,
+                             ILanguageService language,
                              ILogger<SettingsViewModel> logger)
     {
         _services = services;
@@ -96,14 +97,95 @@ public partial class SettingsViewModel : ObservableObject
         _driverSettings = driverOptions.Value;
         _wmServiceSettings = wmServiceOptions.Value;
         _runtimeJsonConfig = runtimeJsonConfig;
+        _language = language;
         _logger = logger;
+        _language.LanguageChanged += (_, _) =>
+            AsyncHelper.SafeDispatcherInvoke(ApplyLocalizedLabels);
         LoadSettingsAsync().SafeFireAndForget("SettingsViewModel.LoadSettings");
+    }
+
+    private void ApplyLocalizedLabels()
+    {
+        try
+        {
+            var channels = Channels.ToList();
+            PdDeviceChannelGroups.Clear();
+            var deviceGroups = channels
+                .GroupBy(c => c.DeviceSN?.Trim() ?? "", StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var ordinal = 1;
+            var tabNoSn = _language.GetString("Settings_PdTabHeaderNoSnFmt");
+            var tabSn = _language.GetString("Settings_PdTabHeaderFmt");
+            var snChFmt = _language.GetString("Settings_PdSnChannelsFmt");
+            foreach (var g in deviceGroups)
+            {
+                var sn = g.Key;
+                var header = string.IsNullOrEmpty(sn)
+                    ? string.Format(tabNoSn, ordinal)
+                    : string.Format(tabSn, ordinal, sn);
+                var groupVm = new PdDeviceChannelGroupViewModel
+                {
+                    DeviceSn = sn,
+                    TabHeader = header,
+                    DeviceOrdinal = ordinal
+                };
+                foreach (var ch in g.OrderBy(c => c.ChannelIndex))
+                    groupVm.Channels.Add(ch);
+                groupVm.SnChannelSummary = string.Format(snChFmt, groupVm.DisplaySn, groupVm.Channels.Count);
+                PdDeviceChannelGroups.Add(groupVm);
+                ordinal++;
+            }
+
+            PdHasDeviceTabs = PdDeviceChannelGroups.Count > 0;
+            PdShowEmptyChannelHint = !PdHasDeviceTabs;
+            PdChannelsSummary = channels.Count == 0
+                ? _language.GetString("Settings_PdSummaryNone")
+                : string.Format(_language.GetString("Settings_PdSummaryFmt"), PdDeviceChannelGroups.Count, channels.Count);
+
+            WbaDevicesSummary = string.Format(_language.GetString("Settings_WbaCountFmt"), WbaDevices.Count);
+
+            DriverMode = string.Equals(_driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase)
+                ? _language.GetString("Settings_DriverMode_Sim")
+                : _language.GetString("Settings_DriverMode_Hw");
+
+            WmConfigXmlPath = string.IsNullOrWhiteSpace(_driverSettings.WmConfigXmlPath)
+                ? _language.GetString("Settings_WmPathUnset")
+                : _driverSettings.WmConfigXmlPath;
+            WmQueryDeviceId = string.IsNullOrWhiteSpace(_wmServiceSettings.QueryDeviceId)
+                ? _language.GetString("Settings_WmQueryAuto")
+                : _wmServiceSettings.QueryDeviceId;
+
+            var states = _pdDriverManager.ConnectionStates;
+            var connectedCount = states.Count(kvp => kvp.Value);
+            PdDriverStatus = states.Count == 0
+                ? _language.GetString("Settings_PdNoDev")
+                : string.Format(_language.GetString("Settings_PdConnFmt"), connectedCount, states.Count);
+
+            var wbaStates = _wbaDeviceManager.ConnectionStates;
+            var wbaConnectedCount = wbaStates.Count(kvp => kvp.Value);
+            WbaDriverStatus = wbaStates.Count == 0
+                ? _language.GetString("Settings_WbaNoDev")
+                : string.Format(_language.GetString("Settings_PdConnFmt"), wbaConnectedCount, wbaStates.Count);
+
+            var wmDriver = _services.GetRequiredService<IWavelengthMeterDriver>();
+            WmDriverStatus = wmDriver.IsInitialized
+                ? _language.GetString("Settings_WmInitYes")
+                : _language.GetString("Settings_WmInitNo");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ApplyLocalizedLabels failed");
+        }
     }
 
     private async Task LoadSettingsAsync()
     {
         try
         {
+            var ui = await _runtimeJsonConfig.LoadUiAsync();
+            SelectedLanguage = ui.Language;
+
             var email = await _runtimeJsonConfig.LoadEmailAsync();
             EmailApiUrl = email.ApiUrl;
             Recipients = email.Recipients;
@@ -126,57 +208,16 @@ public partial class SettingsViewModel : ObservableObject
             Channels.Clear();
             foreach (var ch in channels) Channels.Add(ch);
 
-            PdDeviceChannelGroups.Clear();
-            var deviceGroups = channels
-                .GroupBy(c => c.DeviceSN?.Trim() ?? "", StringComparer.OrdinalIgnoreCase)
-                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            var ordinal = 1;
-            foreach (var g in deviceGroups)
-            {
-                var sn = g.Key;
-                var header = string.IsNullOrEmpty(sn)
-                    ? $"设备 {ordinal}"
-                    : $"设备 {ordinal} · {sn}";
-                var groupVm = new PdDeviceChannelGroupViewModel
-                {
-                    DeviceSn = sn,
-                    TabHeader = header,
-                    DeviceOrdinal = ordinal
-                };
-                foreach (var ch in g.OrderBy(c => c.ChannelIndex))
-                    groupVm.Channels.Add(ch);
-                PdDeviceChannelGroups.Add(groupVm);
-                ordinal++;
-            }
-
-            PdHasDeviceTabs = PdDeviceChannelGroups.Count > 0;
-            PdShowEmptyChannelHint = !PdHasDeviceTabs;
-            PdChannelsSummary = channels.Count == 0
-                ? "暂无 PD 通道"
-                : $"共 {PdDeviceChannelGroups.Count} 台设备 · {channels.Count} 个通道";
-
             WbaDevices.Clear();
             foreach (var wba in _driverSettings.WbaDevices)
                 WbaDevices.Add(wba);
 
-            var wmDriver = _services.GetRequiredService<IWavelengthMeterDriver>();
-            DriverMode = string.Equals(_driverSettings.Mode, "Simulated", StringComparison.OrdinalIgnoreCase)
-                ? "模拟模式 (Simulated)"
-                : "硬件模式 (Hardware)";
-
-            WmConfigXmlPath = string.IsNullOrWhiteSpace(_driverSettings.WmConfigXmlPath)
-                ? "(未配置)"
-                : _driverSettings.WmConfigXmlPath;
             WmServiceMode = string.IsNullOrWhiteSpace(_wmServiceSettings.Mode)
                 ? "Socket"
                 : _wmServiceSettings.Mode;
             WmComPort = _wmServiceSettings.ComPort;
             WmComBaudRate = _wmServiceSettings.BaudRate;
             WmTableChannelCount = _wmServiceSettings.TableChannelCount;
-            WmQueryDeviceId = string.IsNullOrWhiteSpace(_wmServiceSettings.QueryDeviceId)
-                ? "(自动使用首个设备)"
-                : _wmServiceSettings.QueryDeviceId;
             WmServiceIsSimulated = _wmServiceSettings.IsSimulated;
             WmAlarmDelta = _wmServiceSettings.DefaultWavelengthAlarmDeltaNm;
 
@@ -184,30 +225,35 @@ public partial class SettingsViewModel : ObservableObject
             foreach (var spec in _wmServiceSettings.ChannelSpecs ?? [])
                 WmServiceChannelSpecs.Add(spec);
 
-            var states = _pdDriverManager.ConnectionStates;
-            int connectedCount = states.Count(kvp => kvp.Value);
-            PdDriverStatus = states.Count == 0
-                ? "未配置PD设备"
-                : $"{connectedCount}/{states.Count} 已连接";
-
-            var wbaStates = _wbaDeviceManager.ConnectionStates;
-            int wbaConnectedCount = wbaStates.Count(kvp => kvp.Value);
-            WbaDriverStatus = wbaStates.Count == 0
-                ? "未配置WBA设备"
-                : $"{wbaConnectedCount}/{wbaStates.Count} 已连接";
-
-            WmDriverStatus = wmDriver.IsInitialized ? "已初始化" : "未初始化";
-
             var acq = _services.GetRequiredService<IAcquisitionService>();
             IsAcquisitionRunning = acq.IsRunning;
             SamplingIntervalMs = acq.SamplingIntervalMs;
             WmSweepEveryN = acq.WmSweepEveryN;
             WbaSweepEveryN = acq.WbaSweepEveryN > 0 ? acq.WbaSweepEveryN : 1;
             DbWriteEveryN = acq.DbWriteEveryN;
+
+            ApplyLocalizedLabels();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load settings");
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyUiLanguageAsync()
+    {
+        try
+        {
+            _language.ApplyLanguage(SelectedLanguage);
+            var ui = new UiConfig { Language = SelectedLanguage };
+            await _runtimeJsonConfig.SaveUiAsync(ui);
+            StatusMessage = _language.GetString("Settings_Status_Saved");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save UI language");
+            StatusMessage = string.Format(_language.GetString("Settings_Status_SaveFail"), ex.Message);
         }
     }
 
@@ -228,12 +274,12 @@ public partial class SettingsViewModel : ObservableObject
             tms.IsEnabled = !string.IsNullOrWhiteSpace(TmsBaseUrl);
             await _runtimeJsonConfig.SaveTmsAsync(tms);
 
-            StatusMessage = "设置已保存（已写入 config 目录 JSON）";
+            StatusMessage = _language.GetString("Settings_Status_Saved");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save settings");
-            StatusMessage = "保存失败: " + ex.Message;
+            StatusMessage = string.Format(_language.GetString("Settings_Status_SaveFail"), ex.Message);
         }
     }
 
@@ -254,16 +300,16 @@ public partial class SettingsViewModel : ObservableObject
             await PersistEmailSettingsAsync();
             EmailTestStatusIcon = "✔";
             EmailTestStatusColor = "#00E676";
-            EmailTestStatusText = "邮件配置已保存";
-            StatusMessage = "邮件配置已保存";
+            EmailTestStatusText = _language.GetString("Settings_EmailSaved");
+            StatusMessage = _language.GetString("Settings_EmailSaved");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save email settings");
             EmailTestStatusIcon = "✖";
             EmailTestStatusColor = "#FF1744";
-            EmailTestStatusText = "邮件配置保存失败";
-            StatusMessage = "邮件配置保存失败: " + ex.Message;
+            EmailTestStatusText = _language.GetString("Settings_EmailSaveFail");
+            StatusMessage = string.Format(_language.GetString("Settings_Status_SaveFail"), ex.Message);
         }
     }
 
@@ -283,25 +329,25 @@ public partial class SettingsViewModel : ObservableObject
 
             await PersistEmailSettingsAsync();
 
-            StatusMessage = "正在调用邮件 API...";
+            StatusMessage = _language.GetString("Settings_EmailCalling");
             await _emailService.SendTestEmailAsync();
             _consecutiveEmailFailureCount = 0;
             EmailTestStatusIcon = "✔";
             EmailTestStatusColor = "#00E676";
-            EmailTestStatusText = "测试请求发送成功";
-            StatusMessage = "测试邮件已通过 API 发送";
+            EmailTestStatusText = _language.GetString("Settings_EmailTestOk");
+            StatusMessage = _language.GetString("Settings_EmailTestSent");
         }
         catch (Exception ex)
         {
             _consecutiveEmailFailureCount++;
             EmailTestStatusIcon = "✖";
             EmailTestStatusColor = "#FF1744";
-            EmailTestStatusText = "测试邮件发送失败";
-            StatusMessage = "发送失败: " + ex.Message;
+            EmailTestStatusText = _language.GetString("Settings_EmailTestFail");
+            StatusMessage = string.Format(_language.GetString("Settings_EmailSendFail"), ex.Message);
 
             if (_consecutiveEmailFailureCount >= 3)
             {
-                Growl.WarningGlobal("邮件发送连续失败，请检查邮件 API 地址、收件人配置和网络连通性。");
+                Growl.WarningGlobal(_language.GetString("Growl_EmailFailRepeated"));
             }
         }
     }
@@ -318,20 +364,20 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(EmailApiUrl))
         {
-            error = "请先填写邮件 API 地址";
+            error = _language.GetString("Settings_Validate_ApiEmpty");
             return false;
         }
 
         if (!Uri.TryCreate(EmailApiUrl, UriKind.Absolute, out var apiUri)
             || (apiUri.Scheme != Uri.UriSchemeHttp && apiUri.Scheme != Uri.UriSchemeHttps))
         {
-            error = "邮件 API 地址无效";
+            error = _language.GetString("Settings_Validate_ApiInvalid");
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(Recipients))
         {
-            error = "请先填写至少一个收件人";
+            error = _language.GetString("Settings_Validate_RecipientsEmpty");
             return false;
         }
 
@@ -344,13 +390,13 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            StatusMessage = "正在测试TMS连接...";
+            StatusMessage = _language.GetString("Settings_TmsTesting");
             var ok = await _tmsService.TestConnectionAsync();
-            StatusMessage = ok ? "TMS连接成功" : "TMS连接失败";
+            StatusMessage = ok ? _language.GetString("Settings_TmsOk") : _language.GetString("Settings_TmsFail");
         }
         catch (Exception ex)
         {
-            StatusMessage = "连接失败: " + ex.Message;
+            StatusMessage = string.Format(_language.GetString("Settings_TmsConnFail"), ex.Message);
         }
     }
 
@@ -365,12 +411,12 @@ public partial class SettingsViewModel : ObservableObject
             tms.UploadIntervalSec = TmsUploadIntervalSec;
             tms.IsEnabled = !string.IsNullOrWhiteSpace(TmsBaseUrl);
             await _runtimeJsonConfig.SaveTmsAsync(tms);
-            StatusMessage = "TMS 配置已保存（config/TmsConfig.json）";
+            StatusMessage = _language.GetString("Settings_TmsSaved");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save TMS settings");
-            StatusMessage = "TMS 保存失败: " + ex.Message;
+            StatusMessage = string.Format(_language.GetString("Settings_TmsSaveFail"), ex.Message);
         }
     }
 
@@ -381,7 +427,6 @@ public partial class SettingsViewModel : ObservableObject
         {
             var acq = _services.GetRequiredService<IAcquisitionService>();
 
-            // Prevent invalid values from breaking acquisition loop modulo operations.
             SamplingIntervalMs = Math.Max(MinSamplingIntervalMs, SamplingIntervalMs);
             WmSweepEveryN = Math.Max(MinCycleEveryN, WmSweepEveryN);
             WbaSweepEveryN = Math.Max(MinCycleEveryN, WbaSweepEveryN);
@@ -391,7 +436,8 @@ public partial class SettingsViewModel : ObservableObject
             acq.WmSweepEveryN = WmSweepEveryN;
             acq.WbaSweepEveryN = WbaSweepEveryN;
             acq.DbWriteEveryN = DbWriteEveryN;
-            AcqParamsStatus = $"已应用 — PD间隔{SamplingIntervalMs}ms, WM每{WmSweepEveryN}次, WBA每{WbaSweepEveryN}次, DB每{DbWriteEveryN}次";
+            AcqParamsStatus = string.Format(_language.GetString("Settings_AcqApplied"),
+                SamplingIntervalMs, WmSweepEveryN, WbaSweepEveryN, DbWriteEveryN);
             _logger.LogInformation(
                 "Acquisition params updated: interval={Interval}ms, wmEvery={WmN}, wbaEvery={WbaN}, dbEvery={DbN}",
                 SamplingIntervalMs, WmSweepEveryN, WbaSweepEveryN, DbWriteEveryN);
@@ -406,7 +452,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            AcqParamsStatus = "应用失败: " + ex.Message;
+            AcqParamsStatus = string.Format(_language.GetString("Settings_AcqApplyFail"), ex.Message);
             _logger.LogError(ex, "Failed to apply acquisition params");
         }
     }

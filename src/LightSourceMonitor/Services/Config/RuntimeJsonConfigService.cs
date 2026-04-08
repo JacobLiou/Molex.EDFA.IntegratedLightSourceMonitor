@@ -11,6 +11,7 @@ public sealed class RuntimeJsonConfigService : IRuntimeJsonConfigService
     public const string AcquisitionFileName = "AcquisitionConfig.json";
     public const string EmailFileName = "EmailConfig.json";
     public const string TmsFileName = "TmsConfig.json";
+    public const string UiFileName = "UiConfig.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -115,4 +116,10 @@ public sealed class RuntimeJsonConfigService : IRuntimeJsonConfigService
 
     public Task SaveTmsAsync(TmsConfig config, CancellationToken cancellationToken = default) =>
         WriteAsync(TmsFileName, config, cancellationToken);
+
+    public Task<UiConfig> LoadUiAsync(CancellationToken cancellationToken = default) =>
+        ReadAsync(UiFileName, () => new UiConfig(), cancellationToken);
+
+    public Task SaveUiAsync(UiConfig config, CancellationToken cancellationToken = default) =>
+        WriteAsync(UiFileName, config, cancellationToken);
 }

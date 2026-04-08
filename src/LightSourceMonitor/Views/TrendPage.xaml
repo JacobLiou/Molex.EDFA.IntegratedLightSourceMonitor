@@ -9,23 +9,27 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Toolbar -->
         <Border Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
             <WrapPanel VerticalAlignment="Center">
-                <TextBlock Text="时间范围:" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox ItemsSource="{Binding TimeRangeOptions}" SelectedItem="{Binding SelectedTimeRange}"
-                          Width="140" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}"/>
+                <TextBlock Text="{DynamicResource TimeRange_Label}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding TimeRangeKeys}" SelectedItem="{Binding SelectedTimeRange}"
+                          Width="180" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ResourceKeyConverter}}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
-                <Button Content="🔄 刷新" Command="{Binding LoadDataCommand}" Margin="0,0,8,0"
+                <Button Content="{DynamicResource Btn_Refresh}" Command="{Binding LoadDataCommand}" Margin="0,0,8,0"
                         Style="{StaticResource ButtonPrimary}" Padding="12,4"/>
-                <Button Content="导出 CSV" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0"
+                <Button Content="{DynamicResource Btn_ExportCsv}" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0"
                         Style="{StaticResource ButtonDefault}" Padding="12,4"/>
-                <Button Content="导出 PNG" Click="ExportPng_Click"
+                <Button Content="{DynamicResource Btn_ExportPng}" Click="ExportPng_Click"
                         Style="{StaticResource ButtonDefault}" Padding="12,4"/>
             </WrapPanel>
         </Border>
 
-        <!-- Chart -->
         <Grid Grid.Row="1">
             <Border x:Name="ChartContainer" Background="#23233D" CornerRadius="8" Padding="12">
                 <lvc:CartesianChart Series="{Binding Series}"
@@ -45,12 +49,12 @@
                                  Foreground="#448AFF"
                                  Background="#2D2D4A"
                                  BorderThickness="0"/>
-                    <TextBlock Text="正在加载趋势数据…"
+                    <TextBlock Text="{DynamicResource Trend_LoadingTitle}"
                                Foreground="#E8E8F0"
                                FontSize="14"
                                HorizontalAlignment="Center"
                                Margin="0,14,0,0"/>
-                    <TextBlock Text="数据量大时可能需要数秒"
+                    <TextBlock Text="{DynamicResource Trend_LoadingHint}"
                                Foreground="#9898B0"
                                FontSize="12"
                                HorizontalAlignment="Center"
@@ -59,11 +63,10 @@
             </Border>
         </Grid>
 
-        <!-- Status Bar -->
         <Border Grid.Row="2" Margin="0,8,0,0">
             <DockPanel>
                 <TextBlock Text="{Binding StatusText}" Foreground="#9898B0" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding DataPointCount, StringFormat='数据点: {0}'}" 
+                <TextBlock Text="{Binding DataPointSummary}"
                            Foreground="#55556A" HorizontalAlignment="Right" VerticalAlignment="Center"
                            FontFamily="Consolas"/>
             </DockPanel>

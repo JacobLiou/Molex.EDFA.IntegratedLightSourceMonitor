@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Services.Channels;
+using LightSourceMonitor.Services.Localization;
 using LightSourceMonitor.Services.Trend;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -26,59 +27,83 @@ public partial class TrendViewModel : ObservableObject
 
     private readonly ITrendService _trendService;
     private readonly IChannelCatalog _channelCatalog;
+    private readonly ILanguageService _language;
     private readonly ILogger<TrendViewModel> _logger;
     private bool _isLoading;
 
     [ObservableProperty] private ObservableCollection<ISeries> _series = new();
     [ObservableProperty] private Axis[] _xAxes = Array.Empty<Axis>();
     [ObservableProperty] private Axis[] _yAxes = Array.Empty<Axis>();
-    [ObservableProperty] private string _selectedTimeRange = "最近1小时";
+    [ObservableProperty] private string _selectedTimeRange = UiResourceKeys.TimeRange24H;
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private int _dataPointCount;
+    [ObservableProperty] private string _dataPointSummary = "";
     [ObservableProperty] private bool _isTrendDataLoading;
 
-    public string[] TimeRangeOptions { get; } =
-        { "最近1小时", "最近24小时", "最近7天", "最近30天" };
+    public string[] TimeRangeKeys { get; } =
+    [
+        UiResourceKeys.TimeRange1H,
+        UiResourceKeys.TimeRange24H,
+        UiResourceKeys.TimeRange7D,
+        UiResourceKeys.TimeRange30D
+    ];
 
-    public TrendViewModel(ITrendService trendService, IChannelCatalog channelCatalog, ILogger<TrendViewModel> logger)
+    public TrendViewModel(ITrendService trendService, IChannelCatalog channelCatalog, ILanguageService language,
+        ILogger<TrendViewModel> logger)
     {
         _trendService = trendService;
         _channelCatalog = channelCatalog;
+        _language = language;
         _logger = logger;
         InitializeAxes();
+        RefreshDataPointSummary();
+        _language.LanguageChanged += (_, _) =>
+            AsyncHelper.SafeDispatcherInvoke(() =>
+            {
+                InitializeAxes();
+                RefreshDataPointSummary();
+            });
         LoadDataAsync().SafeFireAndForget("TrendViewModel.InitialLoad");
+    }
+
+    partial void OnDataPointCountChanged(int value) => RefreshDataPointSummary();
+
+    private void RefreshDataPointSummary()
+    {
+        DataPointSummary = string.Format(_language.GetString("Trend_DataPoints"), DataPointCount);
     }
 
     private void InitializeAxes()
     {
-        XAxes = new Axis[]
-        {
+        XAxes =
+        [
             new Axis
             {
-                Name = "时间",
+                Name = _language.GetString("Trend_Axis_Time"),
                 NamePaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 LabelsPaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 SeparatorsPaint = new SolidColorPaint(SKColor.Parse("#2D2D4A")) { StrokeThickness = 1 },
-                Labeler = value => {
+                Labeler = value =>
+                {
                     var ticks = (long)value;
                     if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks)
                         return string.Empty;
                     return new DateTime(ticks).ToString("MM/dd HH:mm");
                 },
             }
-        };
+        ];
 
-        YAxes = new Axis[]
-        {
+        YAxes =
+        [
             new Axis
             {
-                Name = "功率 (dBm)",
+                Name = _language.GetString("Trend_Axis_Power"),
                 NamePaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 LabelsPaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 SeparatorsPaint = new SolidColorPaint(SKColor.Parse("#2D2D4A")) { StrokeThickness = 1 },
                 Labeler = value => $"{value:F1}",
             }
-        };
+        ];
     }
 
     partial void OnSelectedTimeRangeChanged(string value)
@@ -95,14 +120,14 @@ public partial class TrendViewModel : ObservableObject
 
         try
         {
-            StatusText = "加载中...";
+            StatusText = _language.GetString("Trend_Loading");
             var (from, to) = GetTimeRange();
 
             var channels = _channelCatalog.GetEnabledChannels();
 
             var newSeries = new ObservableCollection<ISeries>();
-            int colorIdx = 0;
-            int totalPoints = 0;
+            var colorIdx = 0;
+            var totalPoints = 0;
 
             foreach (var channel in channels)
             {
@@ -133,13 +158,13 @@ public partial class TrendViewModel : ObservableObject
             Series = newSeries;
             DataPointCount = totalPoints;
             StatusText = totalPoints > 0
-                ? $"共 {channels.Count} 通道, {totalPoints} 数据点"
-                : "暂无数据 — 请等待采集系统产生数据后刷新";
+                ? string.Format(_language.GetString("Trend_StatusOk"), channels.Count, totalPoints)
+                : _language.GetString("Trend_StatusEmpty");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load trend data");
-            StatusText = $"加载失败: {ex.Message}";
+            StatusText = string.Format(_language.GetString("Trend_StatusFail"), ex.Message);
         }
         finally
         {
@@ -153,10 +178,10 @@ public partial class TrendViewModel : ObservableObject
         var to = DateTime.Now;
         var from = SelectedTimeRange switch
         {
-            "最近1小时" => to.AddHours(-1),
-            "最近24小时" => to.AddDays(-1),
-            "最近7天" => to.AddDays(-7),
-            "最近30天" => to.AddDays(-30),
+            UiResourceKeys.TimeRange1H => to.AddHours(-1),
+            UiResourceKeys.TimeRange24H => to.AddDays(-1),
+            UiResourceKeys.TimeRange7D => to.AddDays(-7),
+            UiResourceKeys.TimeRange30D => to.AddDays(-30),
             _ => to.AddDays(-1)
         };
         return (from, to);
@@ -190,18 +215,18 @@ public partial class TrendViewModel : ObservableObject
             allRecords.Sort((a, b) => a.rec.Timestamp.CompareTo(b.rec.Timestamp));
 
             using var writer = new StreamWriter(dialog.FileName, false, System.Text.Encoding.UTF8);
-            writer.WriteLine("时间,通道,功率(dBm)");
+            writer.WriteLine(_language.GetString("Trend_CsvHeader"));
             foreach (var (chName, rec) in allRecords)
             {
                 writer.WriteLine($"{rec.Timestamp:yyyy-MM-dd HH:mm:ss.fff},{chName},{rec.Power:F3}");
             }
 
-            var fileInfo = new System.IO.FileInfo(dialog.FileName);
-            StatusText = $"已导出 {allRecords.Count} 条记录到 {fileInfo.Name}";
+            var fileInfo = new FileInfo(dialog.FileName);
+            StatusText = string.Format(_language.GetString("Trend_ExportCsvOk"), allRecords.Count, fileInfo.Name);
         }
         catch (Exception ex)
         {
-            StatusText = $"CSV 导出失败: {ex.Message}";
+            StatusText = string.Format(_language.GetString("Trend_ExportCsvFail"), ex.Message);
         }
     }
 

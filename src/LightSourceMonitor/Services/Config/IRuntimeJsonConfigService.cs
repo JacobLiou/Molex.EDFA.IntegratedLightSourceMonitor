@@ -15,4 +15,7 @@ public interface IRuntimeJsonConfigService
 
     Task<TmsConfig> LoadTmsAsync(CancellationToken cancellationToken = default);
     Task SaveTmsAsync(TmsConfig config, CancellationToken cancellationToken = default);
+
+    Task<UiConfig> LoadUiAsync(CancellationToken cancellationToken = default);
+    Task SaveUiAsync(UiConfig config, CancellationToken cancellationToken = default);
 }

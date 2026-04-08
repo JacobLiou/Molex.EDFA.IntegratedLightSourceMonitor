@@ -5,6 +5,7 @@ using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Helpers;
+using LightSourceMonitor.Services.Localization;
 using LightSourceMonitor.Services.Trend;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -26,35 +27,57 @@ public partial class WmTrendViewModel : ObservableObject
     };
 
     private readonly ITrendService _trendService;
+    private readonly ILanguageService _language;
     private readonly ILogger<WmTrendViewModel> _logger;
     private bool _isLoading;
 
     [ObservableProperty] private ObservableCollection<ISeries> _series = new();
     [ObservableProperty] private Axis[] _xAxes = Array.Empty<Axis>();
     [ObservableProperty] private Axis[] _yAxes = Array.Empty<Axis>();
-    [ObservableProperty] private string _selectedTimeRange = "最近1小时";
+    [ObservableProperty] private string _selectedTimeRange = UiResourceKeys.TimeRange24H;
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private int _dataPointCount;
+    [ObservableProperty] private string _dataPointSummary = "";
     [ObservableProperty] private bool _isTrendDataLoading;
 
-    public string[] TimeRangeOptions { get; } =
-        { "最近1小时", "最近24小时", "最近7天", "最近30天" };
+    public string[] TimeRangeKeys { get; } =
+    [
+        UiResourceKeys.TimeRange1H,
+        UiResourceKeys.TimeRange24H,
+        UiResourceKeys.TimeRange7D,
+        UiResourceKeys.TimeRange30D
+    ];
 
-    public WmTrendViewModel(ITrendService trendService, ILogger<WmTrendViewModel> logger)
+    public WmTrendViewModel(ITrendService trendService, ILanguageService language, ILogger<WmTrendViewModel> logger)
     {
         _trendService = trendService;
+        _language = language;
         _logger = logger;
         InitializeAxes();
+        RefreshDataPointSummary();
+        _language.LanguageChanged += (_, _) =>
+            AsyncHelper.SafeDispatcherInvoke(() =>
+            {
+                InitializeAxes();
+                RefreshDataPointSummary();
+            });
         LoadDataAsync().SafeFireAndForget("WmTrendViewModel.InitialLoad");
+    }
+
+    partial void OnDataPointCountChanged(int value) => RefreshDataPointSummary();
+
+    private void RefreshDataPointSummary()
+    {
+        DataPointSummary = string.Format(_language.GetString("Trend_DataPoints"), DataPointCount);
     }
 
     private void InitializeAxes()
     {
-        XAxes = new Axis[]
-        {
+        XAxes =
+        [
             new Axis
             {
-                Name = "时间",
+                Name = _language.GetString("Trend_Axis_Time"),
                 NamePaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 LabelsPaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 SeparatorsPaint = new SolidColorPaint(SKColor.Parse("#2D2D4A")) { StrokeThickness = 1 },
@@ -66,19 +89,19 @@ public partial class WmTrendViewModel : ObservableObject
                     return new DateTime(ticks).ToString("MM/dd HH:mm");
                 },
             }
-        };
+        ];
 
-        YAxes = new Axis[]
-        {
+        YAxes =
+        [
             new Axis
             {
-                Name = "波长 (nm)",
+                Name = _language.GetString("WmTrend_Axis_Wl"),
                 NamePaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 LabelsPaint = new SolidColorPaint(SKColor.Parse("#9898B0")),
                 SeparatorsPaint = new SolidColorPaint(SKColor.Parse("#2D2D4A")) { StrokeThickness = 1 },
                 Labeler = value => $"{value:F3}",
             }
-        };
+        ];
     }
 
     partial void OnSelectedTimeRangeChanged(string value)
@@ -95,7 +118,7 @@ public partial class WmTrendViewModel : ObservableObject
 
         try
         {
-            StatusText = "加载中...";
+            StatusText = _language.GetString("Trend_Loading");
             var (from, to) = GetTimeRange();
 
             var seriesData = await _trendService.GetWmWavelengthTrendAsync(from, to);
@@ -130,13 +153,13 @@ public partial class WmTrendViewModel : ObservableObject
             Series = newSeries;
             DataPointCount = totalPoints;
             StatusText = totalPoints > 0
-                ? $"共 {newSeries.Count} 路, {totalPoints} 数据点"
-                : "暂无数据 — 请等待采集写入波长计快照后刷新";
+                ? string.Format(_language.GetString("WmTrend_StatusOk"), newSeries.Count, totalPoints)
+                : _language.GetString("WmTrend_StatusEmpty");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load WM trend data");
-            StatusText = $"加载失败: {ex.Message}";
+            StatusText = string.Format(_language.GetString("Trend_StatusFail"), ex.Message);
         }
         finally
         {
@@ -150,10 +173,10 @@ public partial class WmTrendViewModel : ObservableObject
         var to = DateTime.Now;
         var from = SelectedTimeRange switch
         {
-            "最近1小时" => to.AddHours(-1),
-            "最近24小时" => to.AddDays(-1),
-            "最近7天" => to.AddDays(-7),
-            "最近30天" => to.AddDays(-30),
+            UiResourceKeys.TimeRange1H => to.AddHours(-1),
+            UiResourceKeys.TimeRange24H => to.AddDays(-1),
+            UiResourceKeys.TimeRange7D => to.AddDays(-7),
+            UiResourceKeys.TimeRange30D => to.AddDays(-30),
             _ => to.AddDays(-1)
         };
         return (from, to);
@@ -177,7 +200,7 @@ public partial class WmTrendViewModel : ObservableObject
             var rows = await _trendService.GetWavelengthMeterSnapshotsAsync(from, to);
             if (rows.Count == 0)
             {
-                StatusText = "所选时间范围内无波长计快照";
+                StatusText = _language.GetString("WmTrend_NoSnapshots");
                 return;
             }
 
@@ -189,9 +212,9 @@ public partial class WmTrendViewModel : ObservableObject
             }
 
             var sb = new StringBuilder();
-            sb.Append("时间,设备");
+            sb.Append(_language.GetString("WmTrend_CsvHeaderBase"));
             for (var i = 0; i < maxCh; i++)
-                sb.Append($",路{i}波长(nm),路{i}功率(dBm)");
+                sb.Append(string.Format(_language.GetString("WmTrend_CsvChCols"), i));
             sb.AppendLine();
 
             foreach (var r in rows)
@@ -213,11 +236,11 @@ public partial class WmTrendViewModel : ObservableObject
             }
 
             await File.WriteAllTextAsync(dialog.FileName, sb.ToString(), Encoding.UTF8);
-            StatusText = $"已导出 {rows.Count} 条快照到 {System.IO.Path.GetFileName(dialog.FileName)}";
+            StatusText = string.Format(_language.GetString("WmTrend_ExportOk"), rows.Count, Path.GetFileName(dialog.FileName));
         }
         catch (Exception ex)
         {
-            StatusText = $"CSV 导出失败: {ex.Message}";
+            StatusText = string.Format(_language.GetString("Trend_ExportCsvFail"), ex.Message);
         }
     }
 

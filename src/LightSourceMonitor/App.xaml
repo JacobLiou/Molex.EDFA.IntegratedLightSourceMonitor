@@ -13,6 +13,8 @@
             <!-- Converters -->
             <conv:StringToBrushConverter x:Key="StringToBrush"/>
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+            <conv:ResourceKeyConverter x:Key="ResourceKeyConverter"/>
+            <conv:StringMatchConverter x:Key="StringMatchConverter"/>
 
             <!-- Global Styles -->
             <Style x:Key="MonoValueText" TargetType="TextBlock">

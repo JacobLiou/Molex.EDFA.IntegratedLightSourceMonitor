@@ -18,6 +18,7 @@ using LightSourceMonitor.Services.Config;
 using LightSourceMonitor.Services.Email;
 using LightSourceMonitor.Services.Retention;
 using LightSourceMonitor.Services.Tms;
+using LightSourceMonitor.Services.Localization;
 using LightSourceMonitor.Services.Trend;
 using LightSourceMonitor.ViewModels;
 using LightSourceMonitor.Views;
@@ -26,7 +27,8 @@ namespace LightSourceMonitor;
 
 public partial class App : Application
 {
-    private IHost _host = null!;
+    private IHost? _host;
+    private ILanguageService? _languageService;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -44,8 +46,20 @@ public partial class App : Application
         catch (Exception ex)
         {
             Log.Fatal(ex, "Application startup failed");
-            MessageBox.Show($"应用程序启动失败:\n{ex.Message}\n\n详情请查看日志文件。",
-                "启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            var title = "启动错误";
+            var body = $"应用程序启动失败:\n{ex.Message}\n\n详情请查看日志文件。";
+            try
+            {
+                var lang = _host?.Services.GetService<ILanguageService>();
+                if (lang != null)
+                {
+                    title = lang.GetString("Msg_StartupErrorTitle");
+                    body = string.Format(lang.GetString("Msg_StartupErrorBody"), ex.Message);
+                }
+            }
+            catch { /* ignore localization */ }
+
+            MessageBox.Show(body, title, MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
     }
@@ -143,6 +157,7 @@ public partial class App : Application
                 services.AddSingleton<IAlarmService, AlarmService>();
                 services.AddSingleton<IChannelCatalog, ChannelCatalog>();
                 services.AddSingleton<IRuntimeJsonConfigService, RuntimeJsonConfigService>();
+                services.AddSingleton<ILanguageService, LanguageService>();
                 services.AddSingleton<IEmailService, EmailService>();
                 services.AddSingleton<IAcquisitionService, AcquisitionService>();
                 services.AddSingleton<ITmsService, TmsUploadService>();
@@ -159,6 +174,12 @@ public partial class App : Application
                 services.AddSingleton<MainWindow>();
             })
             .Build();
+
+        var language = _host.Services.GetRequiredService<ILanguageService>();
+        var runtimeCfg = _host.Services.GetRequiredService<IRuntimeJsonConfigService>();
+        var uiConfig = await runtimeCfg.LoadUiAsync();
+        language.ApplyLanguage(uiConfig.Language);
+        _languageService = language;
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
@@ -199,9 +220,10 @@ public partial class App : Application
 
         try
         {
-            MessageBox.Show(
-                $"发生未处理的错误:\n{e.Exception.Message}\n\n详情请查看日志文件。",
-                "运行时错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+            var title = _languageService?.GetString("Msg_RuntimeErrorTitle") ?? "运行时错误";
+            var fmt = _languageService?.GetString("Msg_RuntimeErrorBody")
+                      ?? "发生未处理的错误:\n{0}\n\n详情请查看日志文件。";
+            MessageBox.Show(string.Format(fmt, e.Exception.Message), title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch { /* MessageBox itself could fail during shutdown */ }
     }
@@ -231,7 +253,7 @@ public partial class App : Application
 
         try
         {
-            if (_host != null)
+            if (_host is not null)
             {
                 var acq = _host.Services.GetService<IAcquisitionService>();
                 if (acq?.IsRunning == true)

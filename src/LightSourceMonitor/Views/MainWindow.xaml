@@ -4,7 +4,8 @@
         xmlns:hc="https://handyorg.github.io/handycontrol"
         xmlns:vm="clr-namespace:LightSourceMonitor.ViewModels"
         xmlns:views="clr-namespace:LightSourceMonitor.Views"
-        Title="集成光源监控系统" 
+        xmlns:models="clr-namespace:LightSourceMonitor.Models"
+        Title="{DynamicResource App_Title}" 
         Height="800" Width="1400"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
@@ -53,22 +54,22 @@
                 <!-- Logo + Title -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Ellipse Width="12" Height="12" Fill="#448AFF" Margin="0,0,10,0"/>
-                    <TextBlock Text="集成光源监控系统" FontSize="20" FontWeight="SemiBold" 
+                    <TextBlock Text="{DynamicResource App_Title}" FontSize="20" FontWeight="SemiBold" 
                                Foreground="#E8E8F0" VerticalAlignment="Center"/>
                     <Border Background="#7C4DFF" CornerRadius="4" Padding="8,2" Margin="12,0,0,0"
                             VerticalAlignment="Center"
                             Visibility="{Binding IsSimulationMode, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="模拟模式" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="{DynamicResource App_SimBadge}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
                     </Border>
                 </StackPanel>
 
                 <!-- Status Info -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
-                    <TextBlock Text="运行: " Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{DynamicResource Shell_Uptime}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <TextBlock Text="{Binding UptimeText}" Foreground="#E8E8F0" FontFamily="Consolas" 
                                VerticalAlignment="Center" Margin="0,0,20,0"/>
 
-                    <TextBlock Text="最后采集: " Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{DynamicResource Shell_LastAcq}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <TextBlock Text="{Binding LastAcquisitionTime}" Foreground="#E8E8F0" FontFamily="Consolas"
                                VerticalAlignment="Center" Margin="0,0,20,0"/>
 
@@ -77,7 +78,7 @@
                             <Style TargetType="Ellipse">
                                 <Setter Property="Fill" Value="{Binding GlobalStatusColor}"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding GlobalStatus}" Value="正常">
+                                    <DataTrigger Binding="{Binding GlobalStatusKind}" Value="{x:Static models:GlobalStatusKind.Normal}">
                                         <Setter Property="Fill" Value="#00E676"/>
                                         <DataTrigger.EnterActions>
                                             <BeginStoryboard>
@@ -89,14 +90,14 @@
                                             </BeginStoryboard>
                                         </DataTrigger.EnterActions>
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding GlobalStatus}" Value="告警">
+                                    <DataTrigger Binding="{Binding GlobalStatusKind}" Value="{x:Static models:GlobalStatusKind.Alarm}">
                                         <Setter Property="Fill" Value="#FF1744"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Ellipse.Style>
                     </Ellipse>
-                    <TextBlock Text="{Binding GlobalStatus}" Foreground="#E8E8F0" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding GlobalStatusText}" Foreground="#E8E8F0" VerticalAlignment="Center"
                                FontWeight="SemiBold"/>
                 </StackPanel>
             </Grid>
@@ -140,11 +141,11 @@
                             </Setter>
                         </Style>
                     </ListBox.ItemContainerStyle>
-                    <ListBoxItem Content="总览" Tag="📊"/>
-                    <ListBoxItem Content="PD趋势" Tag="📈"/>
-                    <ListBoxItem Content="WM趋势" Tag="📡"/>
-                    <ListBoxItem Content="告警" Tag="🔔"/>
-                    <ListBoxItem Content="设置" Tag="⚙"/>
+                    <ListBoxItem Tag="📊" Content="{DynamicResource Nav_Overview}"/>
+                    <ListBoxItem Tag="📈" Content="{DynamicResource Nav_PdTrend}"/>
+                    <ListBoxItem Tag="📡" Content="{DynamicResource Nav_WmTrend}"/>
+                    <ListBoxItem Tag="🔔" Content="{DynamicResource Nav_Alarms}"/>
+                    <ListBoxItem Tag="⚙" Content="{DynamicResource Nav_Settings}"/>
                 </ListBox>
             </DockPanel>
         </Border>

@@ -1,4 +1,5 @@
 using System.Windows;
+using LightSourceMonitor.Services.Localization;
 using LightSourceMonitor.ViewModels;
 using HcMessageBox = HandyControl.Controls.MessageBox;
 
@@ -6,8 +7,11 @@ namespace LightSourceMonitor.Views;
 
 public partial class MainWindow
 {
-    public MainWindow(MainViewModel viewModel)
+    private readonly ILanguageService _language;
+
+    public MainWindow(MainViewModel viewModel, ILanguageService language)
     {
+        _language = language;
         DataContext = viewModel;
         InitializeComponent();
         Loaded += (_, _) => viewModel.NavigateTo(0);
@@ -15,9 +19,9 @@ public partial class MainWindow
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        var result = HcMessageBox.Ask(
-            "确定要退出集成光源监控系统吗？\n退出后将停止数据采集和告警监测。",
-            "确认退出");
+        var title = _language.GetString("Msg_ExitConfirmTitle");
+        var body = _language.GetString("Msg_ExitConfirmBody");
+        var result = HcMessageBox.Ask(body, title);
 
         if (result != MessageBoxResult.OK)
         {
