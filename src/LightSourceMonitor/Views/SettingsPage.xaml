@@ -135,97 +135,121 @@
                                         Padding="16"
                                         Margin="0,8,0,8">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Channels.Count, StringFormat='共 {0} 个通道'}"
+                                        <TextBlock Text="{Binding PdChannelsSummary}"
                                                    Foreground="#9898B0"
                                                    Margin="0,0,0,12" />
-                                        <DataGrid ItemsSource="{Binding Channels}"
-                                                  AutoGenerateColumns="False"
-                                                  IsReadOnly="True"
-                                                  Background="Transparent"
-                                                  Foreground="#E8E8F0"
-                                                  BorderThickness="0"
-                                                  GridLinesVisibility="Horizontal"
-                                                  HorizontalGridLinesBrush="#334466"
-                                                  RowBackground="#23233D"
-                                                  AlternatingRowBackground="#1B1B2F"
-                                                  HeadersVisibility="Column"
-                                                  CanUserResizeRows="False"
-                                                  MaxHeight="320">
-                                            <DataGrid.ColumnHeaderStyle>
-                                                <Style TargetType="DataGridColumnHeader">
-                                                    <Setter Property="Background"
-                                                            Value="#1B1B2F" />
-                                                    <Setter Property="Foreground"
-                                                            Value="#9898B0" />
-                                                    <Setter Property="Padding"
-                                                            Value="10,8" />
-                                                    <Setter Property="FontWeight"
-                                                            Value="SemiBold" />
-                                                    <Setter Property="BorderBrush"
-                                                            Value="#334466" />
-                                                    <Setter Property="BorderThickness"
-                                                            Value="0,0,0,1" />
-                                                </Style>
-                                            </DataGrid.ColumnHeaderStyle>
-                                            <DataGrid.Columns>
-                                                <DataGridTextColumn Header="设备SN"
-                                                                    Binding="{Binding DeviceSN}"
-                                                                    Width="120">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="FontFamily"
-                                                                    Value="Consolas" />
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
-                                                <DataGridTextColumn Header="通道"
-                                                                    Binding="{Binding ChannelName}"
-                                                                    Width="100" />
-                                                <DataGridTextColumn Header="波长 (nm)"
-                                                                    Binding="{Binding SpecWavelength, StringFormat='{}{0:F1}'}"
-                                                                    Width="90">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="FontFamily"
-                                                                    Value="Consolas" />
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
-                                                <DataGridTextColumn Header="功率Min"
-                                                                    Binding="{Binding SpecPowerMin, StringFormat='{}{0:F1}'}"
-                                                                    Width="80">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="FontFamily"
-                                                                    Value="Consolas" />
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
-                                                <DataGridTextColumn Header="功率Max"
-                                                                    Binding="{Binding SpecPowerMax, StringFormat='{}{0:F1}'}"
-                                                                    Width="80">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="FontFamily"
-                                                                    Value="Consolas" />
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
-                                                <DataGridTextColumn Header="告警Δ"
-                                                                    Binding="{Binding AlarmDelta, StringFormat='{}{0:F2}'}"
-                                                                    Width="70">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="FontFamily"
-                                                                    Value="Consolas" />
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
-                                                <DataGridCheckBoxColumn Header="启用"
-                                                                        Binding="{Binding IsEnabled}"
-                                                                        Width="50" />
-                                            </DataGrid.Columns>
-                                        </DataGrid>
+                                        <Grid MinHeight="220">
+                                            <TabControl ItemsSource="{Binding PdDeviceChannelGroups}"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Visibility="{Binding PdHasDeviceTabs, Converter={StaticResource BoolToVisibility}}">
+                                                <TabControl.ItemContainerStyle>
+                                                    <Style TargetType="TabItem">
+                                                        <Setter Property="Background" Value="Transparent" />
+                                                        <Setter Property="Foreground" Value="#9898B0" />
+                                                        <Setter Property="Padding" Value="14,8" />
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter Property="Foreground" Value="#448AFF" />
+                                                                <Setter Property="Background" Value="#2D2D4A" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TabControl.ItemContainerStyle>
+                                                <TabControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding TabHeader}" />
+                                                    </DataTemplate>
+                                                </TabControl.ItemTemplate>
+                                                <TabControl.ContentTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Margin="0,8,0,0">
+                                                            <TextBlock Foreground="#9898B0" Margin="0,0,0,8">
+                                                                <TextBlock.Text>
+                                                                    <MultiBinding StringFormat="设备 SN: {0}  ·  {1} 个通道">
+                                                                        <Binding Path="DisplaySn" Mode="OneWay" />
+                                                                        <Binding Path="Channels.Count" Mode="OneWay" />
+                                                                    </MultiBinding>
+                                                                </TextBlock.Text>
+                                                            </TextBlock>
+                                                            <DataGrid ItemsSource="{Binding Channels}"
+                                                                      AutoGenerateColumns="False"
+                                                                      IsReadOnly="True"
+                                                                      Background="Transparent"
+                                                                      Foreground="#E8E8F0"
+                                                                      BorderThickness="0"
+                                                                      GridLinesVisibility="Horizontal"
+                                                                      HorizontalGridLinesBrush="#334466"
+                                                                      RowBackground="#23233D"
+                                                                      AlternatingRowBackground="#1B1B2F"
+                                                                      HeadersVisibility="Column"
+                                                                      CanUserResizeRows="False"
+                                                                      MaxHeight="320">
+                                                                <DataGrid.ColumnHeaderStyle>
+                                                                    <Style TargetType="DataGridColumnHeader">
+                                                                        <Setter Property="Background" Value="#1B1B2F" />
+                                                                        <Setter Property="Foreground" Value="#9898B0" />
+                                                                        <Setter Property="Padding" Value="10,8" />
+                                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                                        <Setter Property="BorderBrush" Value="#334466" />
+                                                                        <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                                                    </Style>
+                                                                </DataGrid.ColumnHeaderStyle>
+                                                                <DataGrid.Columns>
+                                                                    <DataGridTextColumn Header="通道"
+                                                                                        Binding="{Binding ChannelName}"
+                                                                                        Width="100" />
+                                                                    <DataGridTextColumn Header="波长 (nm)"
+                                                                                        Binding="{Binding SpecWavelength, StringFormat='{}{0:F1}'}"
+                                                                                        Width="90">
+                                                                        <DataGridTextColumn.ElementStyle>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="FontFamily" Value="Consolas" />
+                                                                            </Style>
+                                                                        </DataGridTextColumn.ElementStyle>
+                                                                    </DataGridTextColumn>
+                                                                    <DataGridTextColumn Header="功率Min"
+                                                                                        Binding="{Binding SpecPowerMin, StringFormat='{}{0:F1}'}"
+                                                                                        Width="80">
+                                                                        <DataGridTextColumn.ElementStyle>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="FontFamily" Value="Consolas" />
+                                                                            </Style>
+                                                                        </DataGridTextColumn.ElementStyle>
+                                                                    </DataGridTextColumn>
+                                                                    <DataGridTextColumn Header="功率Max"
+                                                                                        Binding="{Binding SpecPowerMax, StringFormat='{}{0:F1}'}"
+                                                                                        Width="80">
+                                                                        <DataGridTextColumn.ElementStyle>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="FontFamily" Value="Consolas" />
+                                                                            </Style>
+                                                                        </DataGridTextColumn.ElementStyle>
+                                                                    </DataGridTextColumn>
+                                                                    <DataGridTextColumn Header="告警Δ"
+                                                                                        Binding="{Binding AlarmDelta, StringFormat='{}{0:F2}'}"
+                                                                                        Width="70">
+                                                                        <DataGridTextColumn.ElementStyle>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="FontFamily" Value="Consolas" />
+                                                                            </Style>
+                                                                        </DataGridTextColumn.ElementStyle>
+                                                                    </DataGridTextColumn>
+                                                                    <DataGridCheckBoxColumn Header="启用"
+                                                                                            Binding="{Binding IsEnabled}"
+                                                                                            Width="50" />
+                                                                </DataGrid.Columns>
+                                                            </DataGrid>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </TabControl.ContentTemplate>
+                                            </TabControl>
+                                            <TextBlock Text="暂无 PD 通道配置"
+                                                       Foreground="#9898B0"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       Visibility="{Binding PdShowEmptyChannelHint, Converter={StaticResource BoolToVisibility}}" />
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </Expander>

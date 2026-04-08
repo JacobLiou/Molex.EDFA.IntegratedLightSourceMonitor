@@ -64,9 +64,18 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _emailTestStatusColor = "#9898B0";
     [ObservableProperty] private string _emailTestStatusText = "";
 
+    /// <summary>PD 通道配置区顶部摘要文案。</summary>
+    [ObservableProperty] private string _pdChannelsSummary = "";
+
+    /// <summary>是否有至少一台 PD 设备（用于显示 Tab 或空状态）。</summary>
+    [ObservableProperty] private bool _pdHasDeviceTabs;
+
+    [ObservableProperty] private bool _pdShowEmptyChannelHint;
+
     private int _consecutiveEmailFailureCount;
 
     public ObservableCollection<LaserChannel> Channels { get; } = new();
+    public ObservableCollection<PdDeviceChannelGroupViewModel> PdDeviceChannelGroups { get; } = new();
     public ObservableCollection<WbaDeviceSettings> WbaDevices { get; } = new();
     public ObservableCollection<WavelengthServiceChannelSpec> WmServiceChannelSpecs { get; } = new();
 
@@ -116,6 +125,36 @@ public partial class SettingsViewModel : ObservableObject
                 .ToList();
             Channels.Clear();
             foreach (var ch in channels) Channels.Add(ch);
+
+            PdDeviceChannelGroups.Clear();
+            var deviceGroups = channels
+                .GroupBy(c => c.DeviceSN?.Trim() ?? "", StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var ordinal = 1;
+            foreach (var g in deviceGroups)
+            {
+                var sn = g.Key;
+                var header = string.IsNullOrEmpty(sn)
+                    ? $"设备 {ordinal}"
+                    : $"设备 {ordinal} · {sn}";
+                var groupVm = new PdDeviceChannelGroupViewModel
+                {
+                    DeviceSn = sn,
+                    TabHeader = header,
+                    DeviceOrdinal = ordinal
+                };
+                foreach (var ch in g.OrderBy(c => c.ChannelIndex))
+                    groupVm.Channels.Add(ch);
+                PdDeviceChannelGroups.Add(groupVm);
+                ordinal++;
+            }
+
+            PdHasDeviceTabs = PdDeviceChannelGroups.Count > 0;
+            PdShowEmptyChannelHint = !PdHasDeviceTabs;
+            PdChannelsSummary = channels.Count == 0
+                ? "暂无 PD 通道"
+                : $"共 {PdDeviceChannelGroups.Count} 台设备 · {channels.Count} 个通道";
 
             WbaDevices.Clear();
             foreach (var wba in _driverSettings.WbaDevices)
