@@ -8,8 +8,15 @@ public sealed class LanguageService : ILanguageService
 {
     public const string ZhCn = "zh-CN";
     public const string EnUs = "en-US";
+    public const string JaJp = "ja-JP";
+    public const string MsMy = "ms-MY";
+    public const string ViVn = "vi-VN";
 
-    private static readonly string[] Supported = [ZhCn, EnUs];
+    /// <summary>与 <c>Strings.&lt;culture&gt;.xaml</c> 文件名一致的可选 UI 语言。</summary>
+    public static readonly IReadOnlyList<string> SupportedLanguages =
+        [ZhCn, EnUs, JaJp, MsMy, ViVn];
+
+    private static readonly string[] Supported = [ZhCn, EnUs, JaJp, MsMy, ViVn];
 
     private readonly ILogger<LanguageService> _logger;
     private ResourceDictionary? _languageDictionary;

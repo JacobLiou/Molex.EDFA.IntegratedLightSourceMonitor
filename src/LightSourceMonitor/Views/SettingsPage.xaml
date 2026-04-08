@@ -485,17 +485,33 @@
                                                    Foreground="#9898B0"
                                                    TextWrapping="Wrap"
                                                    Margin="0,0,0,14" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <RadioButton Margin="0,0,24,0"
+                                        <WrapPanel Margin="0,0,0,12">
+                                            <RadioButton Margin="0,0,20,8"
                                                          GroupName="UiLang"
                                                          Foreground="#E8E8F0"
                                                          Content="{DynamicResource Language_zh_CN}"
                                                          IsChecked="{Binding SelectedLanguage, Converter={StaticResource StringMatchConverter}, ConverterParameter='zh-CN', Mode=TwoWay}" />
-                                            <RadioButton GroupName="UiLang"
+                                            <RadioButton Margin="0,0,20,8"
+                                                         GroupName="UiLang"
                                                          Foreground="#E8E8F0"
                                                          Content="{DynamicResource Language_en_US}"
                                                          IsChecked="{Binding SelectedLanguage, Converter={StaticResource StringMatchConverter}, ConverterParameter='en-US', Mode=TwoWay}" />
-                                        </StackPanel>
+                                            <RadioButton Margin="0,0,20,8"
+                                                         GroupName="UiLang"
+                                                         Foreground="#E8E8F0"
+                                                         Content="{DynamicResource Language_ja_JP}"
+                                                         IsChecked="{Binding SelectedLanguage, Converter={StaticResource StringMatchConverter}, ConverterParameter='ja-JP', Mode=TwoWay}" />
+                                            <RadioButton Margin="0,0,20,8"
+                                                         GroupName="UiLang"
+                                                         Foreground="#E8E8F0"
+                                                         Content="{DynamicResource Language_ms_MY}"
+                                                         IsChecked="{Binding SelectedLanguage, Converter={StaticResource StringMatchConverter}, ConverterParameter='ms-MY', Mode=TwoWay}" />
+                                            <RadioButton Margin="0,0,20,8"
+                                                         GroupName="UiLang"
+                                                         Foreground="#E8E8F0"
+                                                         Content="{DynamicResource Language_vi_VN}"
+                                                         IsChecked="{Binding SelectedLanguage, Converter={StaticResource StringMatchConverter}, ConverterParameter='vi-VN', Mode=TwoWay}" />
+                                        </WrapPanel>
                                         <Button Content="{DynamicResource Settings_Language_Apply}"
                                                 Command="{Binding ApplyUiLanguageCommand}"
                                                 Style="{StaticResource ButtonPrimary}"
@@ -634,12 +650,21 @@
                                                      Style="{StaticResource TextBoxExtend}"
                                                      Margin="0,0,0,8" />
 
-                                            <TextBlock Grid.Row="1" Text="{DynamicResource Settings_EmailTo}" Foreground="#9898B0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="1"
+                                                       Text="{DynamicResource Settings_EmailTo}"
+                                                       Foreground="#9898B0"
+                                                       VerticalAlignment="Top"
+                                                       Margin="0,8,0,0" />
                                             <TextBox Grid.Row="1"
                                                      Grid.Column="1"
                                                      Text="{Binding Recipients}"
-                                                     hc:InfoElement.Placeholder="user1@example.com; user2@example.com"
+                                                     hc:InfoElement.Placeholder="{DynamicResource Settings_EmailRecipientsPlaceholder}"
                                                      Style="{StaticResource TextBoxExtend}"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     MinHeight="88"
+                                                     VerticalContentAlignment="Top"
                                                      Margin="0,0,0,8" />
                                         </Grid>
                                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">

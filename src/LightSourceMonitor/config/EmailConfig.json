@@ -1,5 +1,5 @@
 {
   "apiUrl": "http://zh-tms-srv1.oplink.com.cn:8800/api/email",
-  "recipients": "menghui.liu1@molex.com",
+  "recipients": "menghui.liu1@molex.com\r\njian.wu1@molex.com",
   "minAlarmLevel": "critical"
 }

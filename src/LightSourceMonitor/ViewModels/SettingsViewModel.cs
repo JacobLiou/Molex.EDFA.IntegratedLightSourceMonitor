@@ -375,7 +375,7 @@ public partial class SettingsViewModel : ObservableObject
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(Recipients))
+        if (EmailRecipientParser.Parse(Recipients).Count == 0)
         {
             error = _language.GetString("Settings_Validate_RecipientsEmpty");
             return false;

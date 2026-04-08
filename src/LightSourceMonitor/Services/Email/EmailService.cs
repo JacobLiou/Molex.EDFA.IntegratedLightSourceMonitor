@@ -85,7 +85,7 @@ public class EmailService : IEmailService
 
         var payload = new
         {
-            To = string.Join(",", config.Recipients.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
+            To = EmailRecipientParser.ToApiToField(config.Recipients),
             Subject = subject,
             Body = body
         };

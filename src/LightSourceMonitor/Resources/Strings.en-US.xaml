@@ -121,6 +121,9 @@
     <sys:String x:Key="Settings_Language_Apply">Apply language</sys:String>
     <sys:String x:Key="Language_zh_CN">简体中文 (zh-CN)</sys:String>
     <sys:String x:Key="Language_en_US">English (en-US)</sys:String>
+    <sys:String x:Key="Language_ja_JP">Japanese (ja-JP)</sys:String>
+    <sys:String x:Key="Language_ms_MY">Malay (Malaysia) (ms-MY)</sys:String>
+    <sys:String x:Key="Language_vi_VN">Vietnamese (vi-VN)</sys:String>
 
     <sys:String x:Key="Settings_AcqSection">Acquisition</sys:String>
     <sys:String x:Key="Settings_AcqIntro">Tune PD / WM / WBA cadence and DB write batching; Apply writes config/AcquisitionConfig.json</sys:String>
@@ -138,6 +141,7 @@
     <sys:String x:Key="Settings_EmailIntro">HTTP POST to corporate email API (To / Subject / Body); saved in config/EmailConfig.json</sys:String>
     <sys:String x:Key="Settings_ApiUrl">API URL:</sys:String>
     <sys:String x:Key="Settings_EmailTo">Recipients:</sys:String>
+    <sys:String x:Key="Settings_EmailRecipientsPlaceholder">user1@example.com; user2@example.com&#10;Or one address per line</sys:String>
     <sys:String x:Key="Settings_EmailSave">Save email settings</sys:String>
     <sys:String x:Key="Settings_EmailTest">Send test email</sys:String>
 

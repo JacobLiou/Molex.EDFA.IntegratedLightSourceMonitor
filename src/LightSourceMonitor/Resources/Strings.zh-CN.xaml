@@ -121,6 +121,9 @@
     <sys:String x:Key="Settings_Language_Apply">应用语言</sys:String>
     <sys:String x:Key="Language_zh_CN">简体中文 (zh-CN)</sys:String>
     <sys:String x:Key="Language_en_US">English (en-US)</sys:String>
+    <sys:String x:Key="Language_ja_JP">日本語 (ja-JP)</sys:String>
+    <sys:String x:Key="Language_ms_MY">Bahasa Melayu (ms-MY)</sys:String>
+    <sys:String x:Key="Language_vi_VN">Tiếng Việt (vi-VN)</sys:String>
 
     <sys:String x:Key="Settings_AcqSection">采集参数</sys:String>
     <sys:String x:Key="Settings_AcqIntro">调整 PD / WM / WBA 扫描节奏与落库频率，修改后点击「应用采集参数」即时生效并写入 config/AcquisitionConfig.json</sys:String>
@@ -138,6 +141,7 @@
     <sys:String x:Key="Settings_EmailIntro">通过 HTTP POST 调用企业邮件接口，报文格式为 To / Subject / Body；配置保存在 config/EmailConfig.json</sys:String>
     <sys:String x:Key="Settings_ApiUrl">API 地址:</sys:String>
     <sys:String x:Key="Settings_EmailTo">收件人:</sys:String>
+    <sys:String x:Key="Settings_EmailRecipientsPlaceholder">多个地址用分号或逗号分隔，或每行一个&#10;例：yang.yu5@molex.com; name2@molex.com</sys:String>
     <sys:String x:Key="Settings_EmailSave">保存邮件配置</sys:String>
     <sys:String x:Key="Settings_EmailTest">发送测试邮件</sys:String>
 
