@@ -8,6 +8,7 @@
     <sys:String x:Key="Nav_Overview">Overview</sys:String>
     <sys:String x:Key="Nav_PdTrend">PD Trend</sys:String>
     <sys:String x:Key="Nav_WmTrend">WM Trend</sys:String>
+    <sys:String x:Key="Nav_WbaTrend">WBA Trend</sys:String>
     <sys:String x:Key="Nav_Alarms">Alarms</sys:String>
     <sys:String x:Key="Nav_Settings">Settings</sys:String>
     <sys:String x:Key="Status_Normal">Normal</sys:String>
@@ -205,6 +206,25 @@
     <sys:String x:Key="WmTrend_ExportOk">Exported {0} snapshot(s) to {1}</sys:String>
     <sys:String x:Key="WmTrend_CsvHeaderBase">Time,Device</sys:String>
     <sys:String x:Key="WmTrend_CsvChCols">,Ch{0} λ(nm),Ch{0} P(dBm)</sys:String>
+
+    <sys:String x:Key="WbaTrend_MetricLabel">Metric:</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_Pressure">Pressure</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_TempAvg">Temp (avg)</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T0">Temp T0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T1">Temp T1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T2">Temp T2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T3">Temp T3</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V0">Voltage V0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V1">Voltage V1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V2">Voltage V2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V3">Voltage V3</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Pressure">Pressure</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Temperature">Temperature (°C)</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Voltage">Voltage (V)</sys:String>
+    <sys:String x:Key="WbaTrend_StatusOk">{0} series, {1} points</sys:String>
+    <sys:String x:Key="WbaTrend_StatusEmpty">No data — wait for WBA records or refresh</sys:String>
+    <sys:String x:Key="WbaTrend_ExportOk">Exported {0} WBA record(s) to {1}</sys:String>
+    <sys:String x:Key="WbaTrend_CsvHeader">Time,DeviceSN,Pressure,TemperaturesJson,VoltagesJson</sys:String>
 
     <sys:String x:Key="Alarm_Level_Critical">Critical</sys:String>
     <sys:String x:Key="Alarm_Level_Warning">Warning</sys:String>

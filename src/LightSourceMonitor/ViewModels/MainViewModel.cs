@@ -73,8 +73,9 @@ public partial class MainViewModel : ObservableObject
                     0 => _services.GetService(typeof(OverviewViewModel)),
                     1 => _services.GetService(typeof(TrendViewModel)),
                     2 => _services.GetService(typeof(WmTrendViewModel)),
-                    3 => _services.GetService(typeof(AlarmViewModel)),
-                    4 => _services.GetService(typeof(SettingsViewModel)),
+                    3 => _services.GetService(typeof(WbaTrendViewModel)),
+                    4 => _services.GetService(typeof(AlarmViewModel)),
+                    5 => _services.GetService(typeof(SettingsViewModel)),
                     _ => CurrentPage
                 };
                 _pageCache[index] = page;

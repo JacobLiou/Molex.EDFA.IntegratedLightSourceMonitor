@@ -24,6 +24,9 @@
         <DataTemplate DataType="{x:Type vm:WmTrendViewModel}">
             <views:WmTrendPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:WbaTrendViewModel}">
+            <views:WbaTrendPage/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:AlarmViewModel}">
             <views:AlarmPage/>
         </DataTemplate>
@@ -144,6 +147,7 @@
                     <ListBoxItem Tag="📊" Content="{DynamicResource Nav_Overview}"/>
                     <ListBoxItem Tag="📈" Content="{DynamicResource Nav_PdTrend}"/>
                     <ListBoxItem Tag="📡" Content="{DynamicResource Nav_WmTrend}"/>
+                    <ListBoxItem Tag="🎛" Content="{DynamicResource Nav_WbaTrend}"/>
                     <ListBoxItem Tag="🔔" Content="{DynamicResource Nav_Alarms}"/>
                     <ListBoxItem Tag="⚙" Content="{DynamicResource Nav_Settings}"/>
                 </ListBox>

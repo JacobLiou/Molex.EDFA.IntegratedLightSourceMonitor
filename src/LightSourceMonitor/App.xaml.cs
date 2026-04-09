@@ -169,6 +169,7 @@ public partial class App : Application
                 services.AddTransient<OverviewViewModel>();
                 services.AddTransient<TrendViewModel>();
                 services.AddTransient<WmTrendViewModel>();
+                services.AddTransient<WbaTrendViewModel>();
                 services.AddTransient<AlarmViewModel>();
                 services.AddTransient<SettingsViewModel>();
 

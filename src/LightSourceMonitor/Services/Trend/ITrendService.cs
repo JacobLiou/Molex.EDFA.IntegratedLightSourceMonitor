@@ -1,3 +1,4 @@
+using System.Text.Json;
 using LightSourceMonitor.Helpers;
 using LightSourceMonitor.Models;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,11 @@ public interface ITrendService
 
     /// <summary>时间范围内的 WM 快照原始行（用于 CSV 导出等）。</summary>
     Task<IReadOnlyList<WavelengthMeterSnapshot>> GetWavelengthMeterSnapshotsAsync(DateTime from, DateTime to);
+
+    Task<IReadOnlyList<WbaTrendSeries>> GetWbaTrendAsync(DateTime from, DateTime to, WbaTrendMetric metric,
+        int maxPointsPerSeries = 2000);
+
+    Task<IReadOnlyList<WbaTelemetryRecord>> GetWbaTelemetryRecordsAsync(DateTime from, DateTime to);
 
     Task CleanupOldDataAsync(int retentionDays = 30);
 }
@@ -129,6 +135,99 @@ public class TrendService : ITrendService
             .Where(r => r.Timestamp >= from && r.Timestamp <= to)
             .OrderBy(r => r.Timestamp)
             .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<WbaTrendSeries>> GetWbaTrendAsync(DateTime from, DateTime to,
+        WbaTrendMetric metric, int maxPointsPerSeries = 2000)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Data.MonitorDbContext>();
+
+        var rows = await db.WbaTelemetryRecords
+            .Where(r => r.Timestamp >= from && r.Timestamp <= to)
+            .OrderBy(r => r.Timestamp)
+            .ToListAsync();
+
+        if (rows.Count == 0)
+            return Array.Empty<WbaTrendSeries>();
+
+        var byDevice = rows.GroupBy(r => r.DeviceSN.Trim(), StringComparer.OrdinalIgnoreCase);
+        var result = new List<WbaTrendSeries>();
+
+        foreach (var g in byDevice)
+        {
+            var pts = new List<(DateTime t, double y)>();
+            foreach (var r in g)
+            {
+                var v = ExtractWbaMetric(r, metric);
+                if (v is { } val)
+                    pts.Add((r.Timestamp, val));
+            }
+
+            if (pts.Count == 0)
+                continue;
+
+            var down = LttbDownsampleDy(pts, maxPointsPerSeries);
+            result.Add(new WbaTrendSeries
+            {
+                SeriesName = string.IsNullOrEmpty(g.Key) ? "WBA" : g.Key,
+                Points = down.Select(p => (Timestamp: p.t, Value: p.y)).ToList()
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<WbaTelemetryRecord>> GetWbaTelemetryRecordsAsync(DateTime from, DateTime to)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Data.MonitorDbContext>();
+        return await db.WbaTelemetryRecords
+            .Where(r => r.Timestamp >= from && r.Timestamp <= to)
+            .OrderBy(r => r.Timestamp)
+            .ToListAsync();
+    }
+
+    private static double? ExtractWbaMetric(WbaTelemetryRecord r, WbaTrendMetric metric)
+    {
+        try
+        {
+            switch (metric)
+            {
+                case WbaTrendMetric.Pressure:
+                    return r.AtmospherePressure;
+                case WbaTrendMetric.TempAvg:
+                {
+                    var arr = JsonSerializer.Deserialize<double[]>(r.TemperaturesJson);
+                    if (arr == null || arr.Length == 0) return null;
+                    return arr.Average();
+                }
+                case WbaTrendMetric.Temp0:
+                case WbaTrendMetric.Temp1:
+                case WbaTrendMetric.Temp2:
+                case WbaTrendMetric.Temp3:
+                {
+                    var arr = JsonSerializer.Deserialize<double[]>(r.TemperaturesJson);
+                    var i = metric - WbaTrendMetric.Temp0;
+                    return arr != null && i < arr.Length ? arr[i] : null;
+                }
+                case WbaTrendMetric.Volt0:
+                case WbaTrendMetric.Volt1:
+                case WbaTrendMetric.Volt2:
+                case WbaTrendMetric.Volt3:
+                {
+                    var arr = JsonSerializer.Deserialize<double[]>(r.VoltagesJson);
+                    var i = metric - WbaTrendMetric.Volt0;
+                    return arr != null && i < arr.Length ? arr[i] : null;
+                }
+                default:
+                    return null;
+            }
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static List<MeasurementRecord> LttbDownsample(List<MeasurementRecord> data, int threshold)

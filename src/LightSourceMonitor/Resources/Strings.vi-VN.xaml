@@ -8,6 +8,7 @@
     <sys:String x:Key="Nav_Overview">Tổng quan</sys:String>
     <sys:String x:Key="Nav_PdTrend">Xu hướng PD</sys:String>
     <sys:String x:Key="Nav_WmTrend">Xu hướng WM</sys:String>
+    <sys:String x:Key="Nav_WbaTrend">Xu hướng WBA</sys:String>
     <sys:String x:Key="Nav_Alarms">Cảnh báo</sys:String>
     <sys:String x:Key="Nav_Settings">Cài đặt</sys:String>
     <sys:String x:Key="Status_Normal">Bình thường</sys:String>
@@ -204,6 +205,25 @@
     <sys:String x:Key="WmTrend_ExportOk">Đã xuất {0} ảnh chụp tới {1}</sys:String>
     <sys:String x:Key="WmTrend_CsvHeaderBase">Thời gian,Thiết bị</sys:String>
     <sys:String x:Key="WmTrend_CsvChCols">,Đường{0} λ(nm),Đường{0} P(dBm)</sys:String>
+
+    <sys:String x:Key="WbaTrend_MetricLabel">Chỉ số:</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_Pressure">Áp suất</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_TempAvg">Nhiệt độ (TB)</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T0">Nhiệt độ T0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T1">Nhiệt độ T1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T2">Nhiệt độ T2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T3">Nhiệt độ T3</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V0">Điện áp V0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V1">Điện áp V1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V2">Điện áp V2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V3">Điện áp V3</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Pressure">Áp suất</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Temperature">Nhiệt độ (°C)</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Voltage">Điện áp (V)</sys:String>
+    <sys:String x:Key="WbaTrend_StatusOk">{0} chuỗi, {1} điểm dữ liệu</sys:String>
+    <sys:String x:Key="WbaTrend_StatusEmpty">Không có dữ liệu — chờ bản ghi WBA hoặc làm mới</sys:String>
+    <sys:String x:Key="WbaTrend_ExportOk">Đã xuất {0} bản ghi WBA tới {1}</sys:String>
+    <sys:String x:Key="WbaTrend_CsvHeader">Thời gian,DeviceSN,Áp suất,TemperaturesJson,VoltagesJson</sys:String>
 
     <sys:String x:Key="Alarm_Level_Critical">Nghiêm trọng</sys:String>
     <sys:String x:Key="Alarm_Level_Warning">Cảnh báo</sys:String>

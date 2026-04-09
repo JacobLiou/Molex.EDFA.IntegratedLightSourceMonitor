@@ -8,6 +8,7 @@
     <sys:String x:Key="Nav_Overview">总览</sys:String>
     <sys:String x:Key="Nav_PdTrend">PD趋势</sys:String>
     <sys:String x:Key="Nav_WmTrend">WM趋势</sys:String>
+    <sys:String x:Key="Nav_WbaTrend">WBA趋势</sys:String>
     <sys:String x:Key="Nav_Alarms">告警</sys:String>
     <sys:String x:Key="Nav_Settings">设置</sys:String>
     <sys:String x:Key="Status_Normal">正常</sys:String>
@@ -205,6 +206,25 @@
     <sys:String x:Key="WmTrend_ExportOk">已导出 {0} 条快照到 {1}</sys:String>
     <sys:String x:Key="WmTrend_CsvHeaderBase">时间,设备</sys:String>
     <sys:String x:Key="WmTrend_CsvChCols">,路{0}波长(nm),路{0}功率(dBm)</sys:String>
+
+    <sys:String x:Key="WbaTrend_MetricLabel">指标:</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_Pressure">气压</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_TempAvg">温度(平均)</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T0">温度 T0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T1">温度 T1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T2">温度 T2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T3">温度 T3</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V0">电压 V0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V1">电压 V1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V2">电压 V2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V3">电压 V3</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Pressure">气压</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Temperature">温度 (°C)</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Voltage">电压 (V)</sys:String>
+    <sys:String x:Key="WbaTrend_StatusOk">共 {0} 条曲线, {1} 数据点</sys:String>
+    <sys:String x:Key="WbaTrend_StatusEmpty">暂无数据 — 请等待采集写入 WBA 记录后刷新</sys:String>
+    <sys:String x:Key="WbaTrend_ExportOk">已导出 {0} 条 WBA 记录到 {1}</sys:String>
+    <sys:String x:Key="WbaTrend_CsvHeader">时间,设备SN,气压,温度JSON,电压JSON</sys:String>
 
     <sys:String x:Key="Alarm_Level_Critical">严重</sys:String>
     <sys:String x:Key="Alarm_Level_Warning">警告</sys:String>

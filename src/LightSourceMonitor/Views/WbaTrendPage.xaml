@@ -1,0 +1,89 @@
+<UserControl x:Class="LightSourceMonitor.Views.WbaTrendPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+            <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="{DynamicResource TimeRange_Label}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding TimeRangeKeys}" SelectedItem="{Binding SelectedTimeRange}"
+                          Width="180" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ResourceKeyConverter}}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Text="{DynamicResource WbaTrend_MetricLabel}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding MetricOptions}"
+                          SelectedValue="{Binding SelectedMetric}"
+                          SelectedValuePath="Metric"
+                          Width="220" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding LabelKey, Converter={StaticResource ResourceKeyConverter}}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Button Content="{DynamicResource Btn_Refresh}" Command="{Binding LoadDataCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource ButtonPrimary}" Padding="12,4"/>
+                <Button Content="{DynamicResource Btn_ExportCsv}" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource ButtonDefault}" Padding="12,4"/>
+                <Button Content="{DynamicResource Btn_ExportPng}" Click="ExportPng_Click"
+                        Style="{StaticResource ButtonDefault}" Padding="12,4"/>
+            </WrapPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Border x:Name="ChartContainer" Background="#23233D" CornerRadius="8" Padding="12">
+                <lvc:CartesianChart x:Name="WbaCartesianChart"
+                                    MinHeight="320"
+                                    Series="{Binding Series}"
+                                    XAxes="{Binding XAxes}"
+                                    YAxes="{Binding YAxes}"
+                                    ZoomMode="X"
+                                    TooltipPosition="Top"
+                                    LegendPosition="Right"
+                                    LegendTextSize="10"/>
+            </Border>
+            <Border Panel.ZIndex="1"
+                    Background="#D8151525"
+                    Visibility="{Binding IsTrendDataLoading, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ProgressBar Width="260" Height="4"
+                                 IsIndeterminate="True"
+                                 Foreground="#448AFF"
+                                 Background="#2D2D4A"
+                                 BorderThickness="0"/>
+                    <TextBlock Text="{DynamicResource Trend_LoadingTitle}"
+                               Foreground="#E8E8F0"
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               Margin="0,14,0,0"/>
+                    <TextBlock Text="{DynamicResource Trend_LoadingHint}"
+                               Foreground="#9898B0"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Margin="0,8,0,0">
+            <DockPanel>
+                <TextBlock Text="{Binding StatusText}" Foreground="#9898B0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding DataPointSummary}"
+                           Foreground="#55556A" HorizontalAlignment="Right" VerticalAlignment="Center"
+                           FontFamily="Consolas"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

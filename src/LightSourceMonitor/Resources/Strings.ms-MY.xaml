@@ -8,6 +8,7 @@
     <sys:String x:Key="Nav_Overview">Gambaran keseluruhan</sys:String>
     <sys:String x:Key="Nav_PdTrend">Trend PD</sys:String>
     <sys:String x:Key="Nav_WmTrend">Trend WM</sys:String>
+    <sys:String x:Key="Nav_WbaTrend">Trend WBA</sys:String>
     <sys:String x:Key="Nav_Alarms">Amaran</sys:String>
     <sys:String x:Key="Nav_Settings">Tetapan</sys:String>
     <sys:String x:Key="Status_Normal">Normal</sys:String>
@@ -205,6 +206,25 @@
     <sys:String x:Key="WmTrend_ExportOk">{0} petikan dieksport ke {1}</sys:String>
     <sys:String x:Key="WmTrend_CsvHeaderBase">Masa,Peranti</sys:String>
     <sys:String x:Key="WmTrend_CsvChCols">,Laluan{0} λ(nm),Laluan{0} P(dBm)</sys:String>
+
+    <sys:String x:Key="WbaTrend_MetricLabel">Metrik:</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_Pressure">Tekanan</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_TempAvg">Suhu (purata)</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T0">Suhu T0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T1">Suhu T1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T2">Suhu T2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_T3">Suhu T3</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V0">Voltan V0</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V1">Voltan V1</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V2">Voltan V2</sys:String>
+    <sys:String x:Key="WbaTrend_Metric_V3">Voltan V3</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Pressure">Tekanan</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Temperature">Suhu (°C)</sys:String>
+    <sys:String x:Key="WbaTrend_Axis_Voltage">Voltan (V)</sys:String>
+    <sys:String x:Key="WbaTrend_StatusOk">{0} siri, {1} titik data</sys:String>
+    <sys:String x:Key="WbaTrend_StatusEmpty">Tiada data — tunggu rekod WBA atau segarkan</sys:String>
+    <sys:String x:Key="WbaTrend_ExportOk">{0} rekod WBA dieksport ke {1}</sys:String>
+    <sys:String x:Key="WbaTrend_CsvHeader">Masa,DeviceSN,Tekanan,TemperaturesJson,VoltagesJson</sys:String>
 
     <sys:String x:Key="Alarm_Level_Critical">Kritikal</sys:String>
     <sys:String x:Key="Alarm_Level_Warning">Amaran</sys:String>
