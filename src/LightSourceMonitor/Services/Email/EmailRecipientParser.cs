@@ -25,5 +25,5 @@ public static class EmailRecipientParser
     }
 
     public static string ToApiToField(string? raw) =>
-        string.Join(",", Parse(raw));
+        string.Join(";", Parse(raw));
 }
