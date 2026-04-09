@@ -7,6 +7,7 @@ public class MonitorDbContext : DbContext
 {
     public DbSet<MeasurementRecord> MeasurementRecords => Set<MeasurementRecord>();
     public DbSet<WavelengthMeterSnapshot> WavelengthMeterSnapshots => Set<WavelengthMeterSnapshot>();
+    public DbSet<WbaTelemetryRecord> WbaTelemetryRecords => Set<WbaTelemetryRecord>();
     public DbSet<AlarmEvent> AlarmEvents => Set<AlarmEvent>();
 
     public MonitorDbContext(DbContextOptions<MonitorDbContext> options) : base(options)
@@ -19,7 +20,7 @@ public class MonitorDbContext : DbContext
         modelBuilder.Entity<MeasurementRecord>(entity =>
         {
             entity.HasIndex(e => new { e.ChannelId, e.Timestamp });
-            entity.HasIndex(e => e.IsSyncedToTms);
+            entity.HasIndex(e => e.IsUploadToTms);
         });
 
         modelBuilder.Entity<AlarmEvent>(entity =>
@@ -31,6 +32,14 @@ public class MonitorDbContext : DbContext
         {
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.QueryDeviceId, e.Timestamp });
+            entity.HasIndex(e => e.IsUploadToTms);
+        });
+
+        modelBuilder.Entity<WbaTelemetryRecord>(entity =>
+        {
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.DeviceSN, e.Timestamp });
+            entity.HasIndex(e => e.IsUploadToTms);
         });
     }
 }

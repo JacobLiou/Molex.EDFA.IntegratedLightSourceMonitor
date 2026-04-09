@@ -66,7 +66,7 @@ namespace LightSourceMonitor.Migrations
                     b.Property<int>("ChannelId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsSyncedToTms")
+                    b.Property<bool>("IsUploadToTms")
                         .HasColumnType("INTEGER");
 
                     b.Property<double>("Power")
@@ -80,7 +80,7 @@ namespace LightSourceMonitor.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsSyncedToTms");
+                    b.HasIndex("IsUploadToTms");
 
                     b.HasIndex("ChannelId", "Timestamp");
 
@@ -91,6 +91,9 @@ namespace LightSourceMonitor.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsUploadToTms")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("OneTimeValues")
@@ -111,11 +114,52 @@ namespace LightSourceMonitor.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsUploadToTms");
+
                     b.HasIndex("Timestamp");
 
                     b.HasIndex("QueryDeviceId", "Timestamp");
 
                     b.ToTable("WavelengthMeterSnapshots");
+                });
+
+            modelBuilder.Entity("LightSourceMonitor.Models.WbaTelemetryRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("AtmospherePressure")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("DeviceSN")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsUploadToTms")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TemperaturesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VoltagesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsUploadToTms");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("DeviceSN", "Timestamp");
+
+                    b.ToTable("WbaTelemetryRecords");
                 });
 
 #pragma warning restore 612, 618

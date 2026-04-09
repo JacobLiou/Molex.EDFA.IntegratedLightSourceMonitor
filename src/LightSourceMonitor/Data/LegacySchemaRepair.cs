@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS ""MeasurementRecords_new"" (
     ""Timestamp""     TEXT    NOT NULL,
     ""Power""         REAL    NOT NULL,
     ""Wavelength""    REAL    NOT NULL,
-    ""IsSyncedToTms"" INTEGER NOT NULL
+    ""IsUploadToTms"" INTEGER NOT NULL
 );
 INSERT INTO ""MeasurementRecords_new""
     SELECT ""Id"",""ChannelId"",""Timestamp"",""Power"",""Wavelength"",""IsSyncedToTms""
@@ -58,8 +58,8 @@ DROP TABLE ""MeasurementRecords"";
 ALTER TABLE ""MeasurementRecords_new"" RENAME TO ""MeasurementRecords"";
 CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_ChannelId_Timestamp""
     ON ""MeasurementRecords"" (""ChannelId"", ""Timestamp"");
-CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_IsSyncedToTms""
-    ON ""MeasurementRecords"" (""IsSyncedToTms"");
+CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_IsUploadToTms""
+    ON ""MeasurementRecords"" (""IsUploadToTms"");
 ", ct);
 
         await db.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"LaserChannels\";", ct);

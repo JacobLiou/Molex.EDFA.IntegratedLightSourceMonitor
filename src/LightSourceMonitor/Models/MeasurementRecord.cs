@@ -10,5 +10,5 @@ public class MeasurementRecord
     public DateTime Timestamp { get; set; }
     public double Power { get; set; }
     public double Wavelength { get; set; }
-    public bool IsSyncedToTms { get; set; }
+    public bool IsUploadToTms { get; set; }
 }

@@ -163,6 +163,7 @@ public partial class App : Application
                 services.AddSingleton<ITmsService, TmsUploadService>();
                 services.AddSingleton<ITrendService, TrendService>();
                 services.AddHostedService<DataRetentionService>();
+                services.AddHostedService<TmsUploadHostedService>();
 
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<OverviewViewModel>();

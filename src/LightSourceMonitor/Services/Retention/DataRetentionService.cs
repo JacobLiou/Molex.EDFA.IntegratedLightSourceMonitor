@@ -99,6 +99,25 @@ public class DataRetentionService : BackgroundService
             totalWmDeleted += wmBatch.Count;
         }
 
+        int totalWbaDeleted = 0;
+        while (!ct.IsCancellationRequested)
+        {
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
+
+            var wbaBatch = await db.WbaTelemetryRecords
+                .Where(r => r.Timestamp < measurementCutoff)
+                .OrderBy(r => r.Id)
+                .Take(BatchSize)
+                .ToListAsync(ct);
+
+            if (wbaBatch.Count == 0) break;
+
+            db.WbaTelemetryRecords.RemoveRange(wbaBatch);
+            await db.SaveChangesAsync(ct);
+            totalWbaDeleted += wbaBatch.Count;
+        }
+
         while (!ct.IsCancellationRequested)
         {
             using var scope = _services.CreateScope();
@@ -117,11 +136,11 @@ public class DataRetentionService : BackgroundService
             totalAlarmDeleted += batch.Count;
         }
 
-        if (totalMeasDeleted > 0 || totalWmDeleted > 0 || totalAlarmDeleted > 0)
+        if (totalMeasDeleted > 0 || totalWmDeleted > 0 || totalWbaDeleted > 0 || totalAlarmDeleted > 0)
         {
             _logger.LogInformation(
-                "Data retention cleanup: deleted {MeasCount} measurements, {WmCount} WM snapshots (>{MeasDays}d), {AlarmCount} alarms (>{AlarmDays}d)",
-                totalMeasDeleted, totalWmDeleted, MeasurementRetentionDays, totalAlarmDeleted, AlarmRetentionDays);
+                "Data retention cleanup: deleted {MeasCount} measurements, {WmCount} WM snapshots, {WbaCount} WBA records (>{MeasDays}d), {AlarmCount} alarms (>{AlarmDays}d)",
+                totalMeasDeleted, totalWmDeleted, totalWbaDeleted, MeasurementRetentionDays, totalAlarmDeleted, AlarmRetentionDays);
 
             try
             {

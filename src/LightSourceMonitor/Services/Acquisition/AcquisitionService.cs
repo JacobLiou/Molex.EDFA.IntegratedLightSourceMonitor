@@ -1,3 +1,4 @@
+using System.Text.Json;
 using LightSourceMonitor.Data;
 using LightSourceMonitor.Drivers;
 using LightSourceMonitor.Helpers;
@@ -315,11 +316,12 @@ public class AcquisitionService : IAcquisitionService
                     {
                         try
                         {
+                            if (wbaBatch.Count > 0)
+                                db.WbaTelemetryRecords.AddRange(MapWbaTelemetryRecords(wbaBatch));
                             if (wlTable != null)
-                            {
                                 db.WavelengthMeterSnapshots.Add(WmSnapshotCsvCodec.ToEntity(wlTable));
+                            if (wlTable != null || wbaBatch.Count > 0)
                                 await db.SaveChangesAsync(ct);
-                            }
                         }
                         catch (Exception ex)
                         {
@@ -355,7 +357,9 @@ public class AcquisitionService : IAcquisitionService
                             db.MeasurementRecords.AddRange(batch.Values);
                         if (wlTable != null)
                             db.WavelengthMeterSnapshots.Add(WmSnapshotCsvCodec.ToEntity(wlTable));
-                        if (batch.Count > 0 || wlTable != null)
+                        if (wbaBatch.Count > 0)
+                            db.WbaTelemetryRecords.AddRange(MapWbaTelemetryRecords(wbaBatch));
+                        if (batch.Count > 0 || wlTable != null || wbaBatch.Count > 0)
                             await db.SaveChangesAsync(ct);
                     }
                     catch (Exception ex)
@@ -512,5 +516,22 @@ public class AcquisitionService : IAcquisitionService
         }
 
         PdDeviceConnectionChanged?.Invoke(new Dictionary<string, bool>(_deviceStates, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<WbaTelemetryRecord> MapWbaTelemetryRecords(IReadOnlyDictionary<string, WbaTelemetrySnapshot> wbaBatch)
+    {
+        foreach (var kv in wbaBatch)
+        {
+            var t = kv.Value;
+            yield return new WbaTelemetryRecord
+            {
+                DeviceSN = t.DeviceSN,
+                Timestamp = t.Timestamp,
+                VoltagesJson = JsonSerializer.Serialize(t.Voltages),
+                TemperaturesJson = JsonSerializer.Serialize(t.Temperatures),
+                AtmospherePressure = t.AtmospherePressure,
+                IsUploadToTms = false
+            };
+        }
     }
 }

@@ -18,4 +18,6 @@ public class WavelengthMeterSnapshot
 
     /// <summary>按路序 0..N-1 的功率 (dBm)，逗号分隔；无效路为空。</summary>
     public string PowerValues { get; set; } = "";
+
+    public bool IsUploadToTms { get; set; }
 }
