@@ -185,19 +185,21 @@ public partial class App : Application
         language.ApplyLanguage(startupLang);
         _languageService = language;
 
-        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-        mainWindow.Show();
-
-        // Apply any pending EF Core migrations (creates / upgrades the DB schema)
+        // Apply migrations before any window is shown: Loaded navigates to Overview and may query the DB.
+        // Running MigrateAsync after Show() caused a race where UI used pre-migration schema / locked tables.
         using (var scope = _host.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
             await db.Database.MigrateAsync();
+            await TmsUploadColumnSchemaFix.EnsureAsync(db);
             var repaired = await LegacySchemaRepair.EnsureNoLegacyLaserChannelForeignKeysAsync(db);
             if (repaired)
                 Log.Warning("Detected legacy LaserChannels FK constraints in existing DB; schema was repaired automatically.");
             Log.Information("Database migrated successfully");
         }
+
+        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
 
         await _host.StartAsync();
 

@@ -17,6 +17,11 @@ public static class LegacySchemaRepair
         if (!hasLegacyAlarmFk && !hasLegacyMeasurementFk)
             return false;
 
+        var tmsFlagCol = await ResolveMeasurementRecordsTmsFlagColumnAsync(connection, ct);
+        if (tmsFlagCol is null)
+            throw new InvalidOperationException(
+                "MeasurementRecords is missing IsSyncedToTms / IsUploadToTms; cannot repair legacy LaserChannels FK.");
+
         await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;", ct);
 
         await db.Database.ExecuteSqlRawAsync(@"
@@ -42,7 +47,32 @@ CREATE INDEX IF NOT EXISTS ""IX_AlarmEvents_ChannelId_OccurredAt""
     ON ""AlarmEvents"" (""ChannelId"", ""OccurredAt"");
 ", ct);
 
-        await db.Database.ExecuteSqlRawAsync(@"
+        // Two static SQL paths (no interpolation) — tmsFlagCol is only IsUploadToTms or IsSyncedToTms from resolver.
+        if (tmsFlagCol == "IsUploadToTms")
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
+CREATE TABLE IF NOT EXISTS ""MeasurementRecords_new"" (
+    ""Id""            INTEGER NOT NULL CONSTRAINT ""PK_MeasurementRecords"" PRIMARY KEY AUTOINCREMENT,
+    ""ChannelId""     INTEGER NOT NULL,
+    ""Timestamp""     TEXT    NOT NULL,
+    ""Power""         REAL    NOT NULL,
+    ""Wavelength""    REAL    NOT NULL,
+    ""IsUploadToTms"" INTEGER NOT NULL
+);
+INSERT INTO ""MeasurementRecords_new""
+    SELECT ""Id"",""ChannelId"",""Timestamp"",""Power"",""Wavelength"",""IsUploadToTms""
+    FROM ""MeasurementRecords"";
+DROP TABLE ""MeasurementRecords"";
+ALTER TABLE ""MeasurementRecords_new"" RENAME TO ""MeasurementRecords"";
+CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_ChannelId_Timestamp""
+    ON ""MeasurementRecords"" (""ChannelId"", ""Timestamp"");
+CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_IsUploadToTms""
+    ON ""MeasurementRecords"" (""IsUploadToTms"");
+", ct);
+        }
+        else
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
 CREATE TABLE IF NOT EXISTS ""MeasurementRecords_new"" (
     ""Id""            INTEGER NOT NULL CONSTRAINT ""PK_MeasurementRecords"" PRIMARY KEY AUTOINCREMENT,
     ""ChannelId""     INTEGER NOT NULL,
@@ -61,6 +91,7 @@ CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_ChannelId_Timestamp""
 CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_IsUploadToTms""
     ON ""MeasurementRecords"" (""IsUploadToTms"");
 ", ct);
+        }
 
         await db.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"LaserChannels\";", ct);
         await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = ON;", ct);
@@ -83,5 +114,39 @@ CREATE INDEX IF NOT EXISTS ""IX_MeasurementRecords_IsUploadToTms""
             return false;
 
         return sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    /// <summary>After EF rename migration, the column may be IsUploadToTms or still IsSyncedToTms on old DBs.</summary>
+    private static async Task<string?> ResolveMeasurementRecordsTmsFlagColumnAsync(DbConnection connection,
+        CancellationToken ct)
+    {
+        var cols = await GetColumnNamesAsync(connection, "MeasurementRecords", ct);
+        if (cols.Contains("IsUploadToTms", StringComparer.OrdinalIgnoreCase))
+            return "IsUploadToTms";
+        if (cols.Contains("IsSyncedToTms", StringComparer.OrdinalIgnoreCase))
+            return "IsSyncedToTms";
+        return null;
+    }
+
+    private static async Task<HashSet<string>> GetColumnNamesAsync(DbConnection connection, string tableName,
+        CancellationToken ct)
+    {
+        var pragma = tableName switch
+        {
+            "MeasurementRecords" => "PRAGMA table_info(MeasurementRecords);",
+            _ => throw new ArgumentOutOfRangeException(nameof(tableName))
+        };
+
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = pragma;
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            if (!reader.IsDBNull(1))
+                set.Add(reader.GetString(1));
+        }
+
+        return set;
     }
 }
