@@ -22,6 +22,7 @@
     <sys:String x:Key="Msg_ExitConfirmBody">Exit Integrated Light Source Monitor?\nData acquisition and alarm monitoring will stop.</sys:String>
 
     <sys:String x:Key="TimeRange_Label">Time range:</sys:String>
+    <sys:String x:Key="Trend_DeviceLabel">PD device:</sys:String>
     <sys:String x:Key="TimeRange_1H">Last 1 hour</sys:String>
     <sys:String x:Key="TimeRange_24H">Last 24 hours</sys:String>
     <sys:String x:Key="TimeRange_7D">Last 7 days</sys:String>

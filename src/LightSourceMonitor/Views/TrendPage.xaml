@@ -11,6 +11,10 @@
 
         <Border Background="#23233D" CornerRadius="8" Padding="12" Margin="0,0,0,12">
             <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="{DynamicResource Trend_DeviceLabel}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding PdDeviceSnList}" SelectedItem="{Binding SelectedPdDeviceSn}"
+                          Width="220" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}"/>
+
                 <TextBlock Text="{DynamicResource TimeRange_Label}" Foreground="#9898B0" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <ComboBox ItemsSource="{Binding TimeRangeKeys}" SelectedItem="{Binding SelectedTimeRange}"
                           Width="180" Margin="0,0,16,0" Style="{StaticResource ComboBoxExtend}">

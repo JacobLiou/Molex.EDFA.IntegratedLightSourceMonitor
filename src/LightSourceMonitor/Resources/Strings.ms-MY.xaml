@@ -22,6 +22,7 @@
     <sys:String x:Key="Msg_ExitConfirmBody">Tutup Sistem Pemantauan Sumber Cahaya Terintegrasi?\nPengambilan data dan pemantauan amaran akan dihentikan.</sys:String>
 
     <sys:String x:Key="TimeRange_Label">Julat masa:</sys:String>
+    <sys:String x:Key="Trend_DeviceLabel">Peranti PD:</sys:String>
     <sys:String x:Key="TimeRange_1H">1 jam lepas</sys:String>
     <sys:String x:Key="TimeRange_24H">24 jam lepas</sys:String>
     <sys:String x:Key="TimeRange_7D">7 hari lepas</sys:String>

@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LightSourceMonitor.Helpers;
+using LightSourceMonitor.Models;
 using LightSourceMonitor.Services.Channels;
 using LightSourceMonitor.Services.Localization;
 using LightSourceMonitor.Services.Trend;
@@ -30,6 +32,7 @@ public partial class TrendViewModel : ObservableObject
     private readonly ILanguageService _language;
     private readonly ILogger<TrendViewModel> _logger;
     private bool _isLoading;
+    private bool _suppressPdDeviceSelectionChanged;
 
     [ObservableProperty] private ObservableCollection<ISeries> _series = new();
     [ObservableProperty] private Axis[] _xAxes = Array.Empty<Axis>();
@@ -39,6 +42,11 @@ public partial class TrendViewModel : ObservableObject
     [ObservableProperty] private int _dataPointCount;
     [ObservableProperty] private string _dataPointSummary = "";
     [ObservableProperty] private bool _isTrendDataLoading;
+
+    /// <summary>Distinct PD device SNs (enabled channels only), for trend scope.</summary>
+    public ObservableCollection<string> PdDeviceSnList { get; } = new();
+
+    [ObservableProperty] private string _selectedPdDeviceSn = "";
 
     public string[] TimeRangeKeys { get; } =
     [
@@ -63,6 +71,9 @@ public partial class TrendViewModel : ObservableObject
                 InitializeAxes();
                 RefreshDataPointSummary();
             });
+        _suppressPdDeviceSelectionChanged = true;
+        RefreshPdDeviceList();
+        _suppressPdDeviceSelectionChanged = false;
         LoadDataAsync().SafeFireAndForget("TrendViewModel.InitialLoad");
     }
 
@@ -111,6 +122,48 @@ public partial class TrendViewModel : ObservableObject
         LoadDataAsync().SafeFireAndForget("TrendVM.TimeRangeChanged");
     }
 
+    partial void OnSelectedPdDeviceSnChanged(string value)
+    {
+        if (_suppressPdDeviceSelectionChanged)
+            return;
+        LoadDataAsync().SafeFireAndForget("TrendVM.PdDeviceChanged");
+    }
+
+    private void RefreshPdDeviceList()
+    {
+        var sns = _channelCatalog.GetEnabledChannels()
+            .Select(c => c.DeviceSN)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        PdDeviceSnList.Clear();
+        foreach (var s in sns)
+            PdDeviceSnList.Add(s);
+
+        if (sns.Count == 0)
+        {
+            SelectedPdDeviceSn = "";
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(SelectedPdDeviceSn) &&
+            sns.Any(x => string.Equals(x, SelectedPdDeviceSn, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        SelectedPdDeviceSn = sns[0];
+    }
+
+    private IReadOnlyList<LaserChannel> GetChannelsForSelectedDevice()
+    {
+        var all = _channelCatalog.GetEnabledChannels();
+        if (string.IsNullOrEmpty(SelectedPdDeviceSn))
+            return Array.Empty<LaserChannel>();
+
+        return all.Where(c => string.Equals(c.DeviceSN, SelectedPdDeviceSn, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
     [RelayCommand]
     public async Task LoadDataAsync()
     {
@@ -123,7 +176,7 @@ public partial class TrendViewModel : ObservableObject
             StatusText = _language.GetString("Trend_Loading");
             var (from, to) = GetTimeRange();
 
-            var channels = _channelCatalog.GetEnabledChannels();
+            var channels = GetChannelsForSelectedDevice();
 
             var newSeries = new ObservableCollection<ISeries>();
             var colorIdx = 0;
@@ -202,7 +255,7 @@ public partial class TrendViewModel : ObservableObject
             if (dialog.ShowDialog() != true) return;
 
             var (from, to) = GetTimeRange();
-            var channels = _channelCatalog.GetEnabledChannels();
+            var channels = GetChannelsForSelectedDevice();
 
             var allRecords = new List<(string chName, Models.MeasurementRecord rec)>();
             foreach (var ch in channels)

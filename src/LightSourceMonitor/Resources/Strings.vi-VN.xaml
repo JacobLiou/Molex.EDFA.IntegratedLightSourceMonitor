@@ -22,6 +22,7 @@
     <sys:String x:Key="Msg_ExitConfirmBody">Thoát Hệ thống giám sát nguồn sáng tích hợp?\nThu thập dữ liệu và giám sát cảnh báo sẽ dừng.</sys:String>
 
     <sys:String x:Key="TimeRange_Label">Khoảng thời gian:</sys:String>
+    <sys:String x:Key="Trend_DeviceLabel">Thiết bị PD:</sys:String>
     <sys:String x:Key="TimeRange_1H">1 giờ gần đây</sys:String>
     <sys:String x:Key="TimeRange_24H">24 giờ gần đây</sys:String>
     <sys:String x:Key="TimeRange_7D">7 ngày gần đây</sys:String>

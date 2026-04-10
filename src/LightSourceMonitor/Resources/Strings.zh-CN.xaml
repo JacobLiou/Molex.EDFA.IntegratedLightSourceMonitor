@@ -22,6 +22,7 @@
     <sys:String x:Key="Msg_ExitConfirmBody">确定要退出集成光源监控系统吗？\n退出后将停止数据采集和告警监测。</sys:String>
 
     <sys:String x:Key="TimeRange_Label">时间范围:</sys:String>
+    <sys:String x:Key="Trend_DeviceLabel">PD 设备:</sys:String>
     <sys:String x:Key="TimeRange_1H">最近1小时</sys:String>
     <sys:String x:Key="TimeRange_24H">最近24小时</sys:String>
     <sys:String x:Key="TimeRange_7D">最近7天</sys:String>
